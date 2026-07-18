@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""RENZ Launcher v6 -- First-Time Setup Wizard"""
+"""RENZ Launcher v7 -- First-Time Setup Wizard"""
 import os
 import sys
 import shutil
@@ -10,7 +10,7 @@ CONFIG_DIR = DIST_ROOT / "config"
 
 def setup():
     print("=" * 60)
-    print("  RENZ Launcher v6 -- Setup Wizard")
+    print("  RENZ Launcher v7 -- Setup Wizard")
     print("=" * 60)
     print()
 

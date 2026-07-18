@@ -1,4 +1,4 @@
-# RENZ Launcher v6 -- Universal
+# RENZ Launcher v7 -- Universal
 
 > One launcher for every AI coding agent. Bypass permissions. Inject personas. Route any model.
 
