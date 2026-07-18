@@ -134,6 +134,60 @@ def strip_refusals(text):
             text = new
     return text, count
 
+def _promote_reasoning_to_content(line):
+    """Reasoning models (glm-5.2, qwen, kimi, deepseek-r1, minimax) often put the
+    actual response in `reasoning` and leave `content` empty. This helper moves
+    the reasoning text into content so the client gets a non-empty answer.
+    Works on both complete JSON and streaming SSE data: lines.
+    """
+    try:
+        # Extract the data payload (handle SSE format too)
+        if line.startswith('data: '):
+            payload = line[6:].strip()
+        else:
+            payload = line.strip()
+        if not payload or payload == '[DONE]':
+            return line
+        obj = json.loads(payload)
+        # Find the message with empty content + non-empty reasoning
+        choices = obj.get('choices', [])
+        if not choices:
+            return line
+        msg = choices[0].get('message', {})
+        content = msg.get('content', '')
+        reasoning = msg.get('reasoning', '')
+        if (not content or content == '') and reasoning:
+            # Strip the "[rat] cold wire..." preamble — keep the actual answer
+            # The reasoning field often has format: "[rat] thinking...\n\nratman4080: actual answer"
+            # We want just the actual answer part
+            answer = reasoning
+            # Try to find the start of the actual response (after planning preamble)
+            # Common patterns: starts with "**", "#", "ratman4080:", or just prose
+            import re as _re
+            # Strip thinking-style preamble
+            cleaned = _re.sub(r'^\[rat\][^\n]*\n+', '', answer, flags=_re.MULTILINE)
+            # Strip ratman4080: prefix if present (prefill)
+            cleaned = _re.sub(r'^ratman4080:\s*', '', cleaned, flags=_re.MULTILINE)
+            # Strip "[COMPILER] 0xXX:" prefix if present
+            cleaned = _re.sub(r'^\[COMPILER\]\s*0x[0-9a-fA-F]+:\s*', '', cleaned)
+            # Strip "thinking preamble" if it ends with double newline (the model separated thinking from answer)
+            if '\n\n' in cleaned:
+                parts = cleaned.split('\n\n', 1)
+                # If the first part is "thinking" and the second is "answer", use the second
+                if len(parts[0]) < len(parts[1]) and any(c in parts[1] for c in ['**', '#', '1.', '2.', '```']):
+                    cleaned = parts[1]
+            msg['content'] = cleaned.strip()
+            msg['reasoning'] = reasoning  # keep original
+            obj['choices'][0]['message'] = msg
+            # Re-serialize
+            new_payload = json.dumps(obj, ensure_ascii=False)
+            if line.startswith('data: '):
+                return f"data: {new_payload}"
+            return new_payload
+    except Exception:
+        pass
+    return line
+
 # ── Persona management ────────────────────────────────────────────────────
 CURRENT_PERSONA = os.environ.get('RENZ_PERSONA_PROMPT', '')
 PERSONA_FILES = {}
@@ -894,6 +948,10 @@ class ProxyHandler(BaseHTTPRequestHandler):
                                 idx = buffer.index('\n')
                                 line = buffer[:idx]
                                 buffer = buffer[idx+1:]
+                                # Reasoning-model fix: if line has empty content but reasoning,
+                                # promote reasoning to content so client gets the actual answer
+                                if '"content":""' in line and '"reasoning"' in line:
+                                    line = _promote_reasoning_to_content(line)
                                 cleaned, n = strip_refusals(line)
                                 if n: total_refuses += n
                                 if cleaned.strip():

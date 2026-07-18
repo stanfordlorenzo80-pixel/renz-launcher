@@ -6,7 +6,7 @@ import json, urllib.request, time
 from pathlib import Path
 
 PROXY = "http://127.0.0.1:11435"
-PERSONA = Path(r"C:\Users\Administrator\Desktop\renz_launcher\personas\compiler.txt").read_text(encoding='utf-8')
+PERSONA = Path(r"./\renz_launcher\personas\compiler.txt").read_text(encoding='utf-8')
 
 MODELS = [
     "glm-5.2:cloud",
