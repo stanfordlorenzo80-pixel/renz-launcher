@@ -58,29 +58,29 @@ from renz_app.__main__ import (
 )
 
 # ════════════════════════════════════════════════════════════════════════
-# Theme — subtle, GitHub-dark inspired
+# Theme — black + matrix green (v8.7.0)
 # ════════════════════════════════════════════════════════════════════════
-BG_BASE     = "#0d1117"   # main bg
-BG_PANEL    = "#161b22"   # sidebar / panels
-BG_RAIL     = "#010409"   # icon rail
-BG_INPUT    = "#0d1117"   # input field
-BG_BUBBLE_USER = "#1f6feb"  # subtle blue (user)
-BG_BUBBLE_ASSIST = "#161b22"  # subtle gray (assistant)
-BG_HOVER    = "#21262d"
-BG_SELECTED = "#1f2937"
-BG_BORDER   = "#30363d"
-BG_DEEP     = "#010409"
-BG_CODE     = "#0a0e14"   # code blocks (slightly darker)
-BG_TOOL     = "#0d1117"
+BG_BASE     = "#000000"   # pure black
+BG_PANEL    = "#0a0e0a"   # green-tinted black
+BG_RAIL     = "#000000"   # icon rail
+BG_INPUT    = "#0a0e0a"   # input field
+BG_BUBBLE_USER = "#00cc52"  # green for user
+BG_BUBBLE_ASSIST = "#0d120d"  # subtle dark for assistant
+BG_HOVER    = "#1a2e1a"
+BG_SELECTED = "#0d290d"
+BG_BORDER   = "#1a2e1a"
+BG_DEEP     = "#000000"
+BG_CODE     = "#0a0e0a"   # code blocks
+BG_TOOL     = "#0a0e0a"
 
-FG_PRIMARY  = "#e6edf3"   # main text
-FG_SECONDARY= "#7d8590"   # secondary
-FG_TERTIARY = "#484f58"   # tertiary
-FG_ACCENT   = "#58a6ff"   # brand accent (blue)
-FG_SUCCESS  = "#3fb950"   # green
-FG_WARNING  = "#d29922"   # yellow
-FG_ERROR    = "#f85149"   # red
-FG_LINK     = "#79c0ff"
+FG_PRIMARY  = "#e6ffe6"   # main text (slight green tint)
+FG_SECONDARY= "#7d8c7d"   # secondary
+FG_TERTIARY = "#484f48"   # tertiary
+FG_ACCENT   = "#00ff66"   # brand accent (matrix green)
+FG_SUCCESS  = "#00ff66"   # green
+FG_WARNING  = "#ffcc00"   # yellow
+FG_ERROR    = "#ff3838"   # red
+FG_LINK     = "#5cff8e"
 
 FONT_FAMILY = "Segoe UI"
 FONT_MONO   = "Cascadia Code"

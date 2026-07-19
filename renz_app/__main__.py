@@ -582,8 +582,11 @@ def main():
         description="RENZ App — built-in terminal agent (v3)",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    parser.add_argument("--base-url", default="http://127.0.0.1:11435/v1",
-                       help="OpenAI-compatible API endpoint")
+    parser.add_argument("--base-url",
+                       default=os.environ.get("RENZ_CLOUD_URL") or os.environ.get("OPENAI_BASE_URL") or "http://127.0.0.1:11435/v1",
+                       help="OpenAI-compatible API endpoint (defaults to RENZ_CLOUD_URL or OPENAI_BASE_URL env, or local proxy)")
+    parser.add_argument("--remote", metavar="URL",
+                       help="Use a remote (Cloudflare worker) endpoint instead of local proxy")
     parser.add_argument("--model", default="glm-5.2:cloud",
                        help="Model to use")
     parser.add_argument("--persona", default="NOVA.txt",
@@ -593,6 +596,10 @@ def main():
     parser.add_argument("--no-banner", action="store_true",
                        help="Skip the welcome banner")
     args = parser.parse_args()
+
+    # --remote overrides --base-url
+    if args.remote:
+        args.base_url = args.remote
 
     persona_content = load_persona(args.persona)
     client = APIClient(args.base_url, args.model, persona_content, yolo=args.yolo)
