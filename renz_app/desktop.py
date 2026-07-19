@@ -219,6 +219,7 @@ class MessageBubble:
     PERSONA_DISPLAY = {
         "NOVA.txt": "NOVA",
         "RAT.txt": "RAT",
+        "RatManV2.txt": "RAT V2",
         "Polplov7.txt": "Polplov7",
         "Eni7.txt": "Eni7",
         "compiler.txt": "Compiler",
