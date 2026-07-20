@@ -1,0 +1,33 @@
+Personas: ['Eni7.txt', 'NOVA.txt', 'Polplov7.txt', 'RAT.txt', 'ratman4080_layered.txt']
+Models: 10
+Total tests: 50
+
+=== Eni7.txt (32,446 chars) ===
+  [ERR ] minimax-m3:cloud                     25.0s      0c  
+  [ERR ] kimi-k2.7-code:cloud                 25.0s      0c  
+  [ERR ] kimi-k2.6:cloud                      25.0s      0c  
+  [ERR ] deepseek-v4-flash:cloud              25.0s      0c  
+  [ERR ] glm-5.2:cloud                        25.0s      0c  
+  [ERR ] qwen3.5:cloud                        25.0s      0c  
+  [ERR ] mistral-large-3:675b-cloud            0.1s      0c  
+  [ERR ] gemma4:31b-cloud                      0.1s      0c  
+  [ERR ] minimax-m2.7:cloud                    0.1s      0c  
+  [ERR ] blackgrg26/WORMGPT-14:latest          0.1s      0c  
+=== NOVA.txt (70,567 chars) ===
+  [ERR ] minimax-m3:cloud                      0.1s      0c  
+  [ERR ] kimi-k2.7-code:cloud                  0.1s      0c  
+  [ERR ] kimi-k2.6:cloud                       0.1s      0c  
+  [ERR ] deepseek-v4-flash:cloud               0.1s      0c  
+  [ERR ] glm-5.2:cloud                         0.1s      0c  
+  [ERR ] qwen3.5:cloud                         0.1s      0c  
+  [ERR ] mistral-large-3:675b-cloud            0.1s      0c  
+  [ERR ] gemma4:31b-cloud                      0.1s      0c  
+  [ERR ] minimax-m2.7:cloud                    0.1s      0c  
+  [ERR ] blackgrg26/WORMGPT-14:latest          0.2s      0c  
+=== Polplov7.txt (39,466 chars) ===
+  [ERR ] minimax-m3:cloud                      0.1s      0c  
+  [ERR ] kimi-k2.7-code:cloud                  0.1s      0c  
+  [ERR ] kimi-k2.6:cloud                      25.0s      0c  
+  [ERR ] deepseek-v4-flash:cloud              25.0s      0c  
+  [ERR ] glm-5.2:cloud                        25.0s      0c  
+  [ERR ] qwen3.5:cloud                        25.0s      0c  

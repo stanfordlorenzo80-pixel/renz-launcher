@@ -1,0 +1,40 @@
+[90m08:10:24[0m [96m>>[0m Persona from ENV path: 23,833 chars
+[1;96m
+  ╔══════════════════════════════════════════════════════════════╗
+  ║  [1;95mWORM Universal Proxy v7[1;96m — THE ONE-OF-ONE              ║
+  ║  [97mAny model in → NOVA persona out[1;96m                       ║
+  ╠══════════════════════════════════════════════════════════════╣
+  ║  Port: [97m11435                                                [1;96m║
+  ║  Persona: [1;92m23,833 chars (NOVA v7 detected)     [1;96m║
+  ║  Files: [97m4                                                     [1;96m║
+  ║  Refusal strip: [1;91mOFF                                            [1;96m║
+  ║  Identity Lock: [1;92mACTIVE — models become NOVA[1;96m          ║
+  ║  Mode: [1;93mLIVE LOG                                           [1;96m║
+  ╚══════════════════════════════════════════════════════════════╝
+[0m
+  [90mEndpoints:[0m
+    [96mGET  [97m/health[0m      [90m— proxy status[0m
+    [96mGET  [97m/persona[0m     [90m— view active persona[0m
+    [96mGET  [97m/stats[0m       [90m— request counters[0m
+    [96mGET  [97m/v1/models[0m   [90m— merged model list[0m
+    [96mPOST [97m/set_persona[0m [90m— swap persona at runtime[0m
+    [96mPOST [97m/shutdown[0m    [90m— stop proxy[0m
+
+  [90mRoutes:[0m [1;94mOpenAI[0m · [1;95mAnthropic[0m · [1;92mGemini[0m · [93mOllama[0m · [1;91mXAI[0m · [96mDeepSeek[0m
+  [90mModels:[0m GPT-5.6 · Claude · Fable · Kimi · DeepSeek · GLM · Qwen · ANY
+
+  [90m──────────────────────────────────────────────────────────────[0m
+  [2mLive traffic feed below — every request logged in real time:[0m
+  [90m──────────────────────────────────────────────────────────────[0m
+
+[90m08:11:08[0m [1;96m#0001[0m [1;95mPOST[0m [97m/v1/chat/completions[0m [2m|[0m [1;94mOllama[0m [2m|[0m [93mkimi-k2.7-code:cloud[0m [2m|[0m [92mopenai-chat[0m [2m|[0m 3,107B
+[90m08:11:09[0m [1;92mOK[0m [1;92m200[0m [2m|[0m 1.84s [2m|[0m 736B [2m|[0m [91m0 refusals stripped[0m
+[90m08:11:15[0m [1;96m#0002[0m [1;95mPOST[0m [97m/v1/chat/completions[0m [2m|[0m [1;94mOllama[0m [2m|[0m [93mdeepseek-v4-flash:cloud[0m [2m|[0m [92mopenai-chat[0m [2m|[0m 3,121B
+[90m08:11:16[0m [1;92mOK[0m [1;92m200[0m [2m|[0m 0.60s [2m|[0m 309B [2m|[0m [91m0 refusals stripped[0m
+[90m08:11:23[0m [1;96m#0003[0m [1;95mPOST[0m [97m/v1/chat/completions[0m [2m|[0m [1;94mOllama[0m [2m|[0m [93mglm-5.2:cloud[0m [2m|[0m [92mopenai-chat[0m [2m|[0m 3,087B
+[90m08:11:25[0m [1;92mOK[0m [1;92m200[0m [2m|[0m 1.24s [2m|[0m 392B [2m|[0m [91m0 refusals stripped[0m
+[90m08:11:29[0m [1;96m#0004[0m [1;95mPOST[0m [97m/v1/chat/completions[0m [2m|[0m [1;94mOllama[0m [2m|[0m [93mminimax-m3:cloud[0m [2m|[0m [92mopenai-chat[0m [2m|[0m 3,089B
+[90m08:11:30[0m [1;92mOK[0m [1;92m200[0m [2m|[0m 1.02s [2m|[0m 287B [2m|[0m [91m0 refusals stripped[0m
+[90m08:11:34[0m [1;96m#0005[0m [1;95mPOST[0m [97m/v1/chat/completions[0m [2m|[0m [1;94mAnthropic[0m [2m|[0m [93mclaude-3-5-sonnet-20241022[0m [2m|[0m [92mopenai-chat[0m [2m|[0m 3,111B
+[90m08:11:34[0m [96m>>[0m Injecting real Claude OAuth token (108 chars)
+[90m08:11:34[0m [1;91m!![0m [91mHTTP 404 from Anthropic (0.34s): b'{"error":{"code":"not_found_error","message":"model: claude-3-5-sonnet-20241022","type":"invalid_request_error","param":null}}'[0m

@@ -1,0 +1,47 @@
+name = "renz-worm-proxy"
+main = "src/worker.js"
+compatibility_date = "2024-09-23"
+
+# Routes all paths to the worker
+routes = [
+  { pattern = "renz.example.com/*", zone_name = "example.com" }
+]
+
+# Or for workers.dev subdomain (no domain needed):
+# routes = []
+# workers_dev = true
+
+[vars]
+# Default persona (can be overridden via RENZ_PERSONA secret)
+Renz_DEFAULT_PERSONA = "NOVA"
+
+# Per-environment overrides
+[env.production]
+name = "renz-worm-proxy"
+
+[env.staging]
+name = "renz-worm-proxy-staging"
+
+# Secrets (set via `wrangler secret put`):
+# OPENAI_API_KEY
+# ANTHROPIC_API_KEY
+# OLLAMA_API_KEY
+# RENZ_PERSONA
+# RENZ_OAUTH_OPENAI
+# RENZ_OAUTH_ANTHROPIC
+#
+# Example:
+#   npx wrangler secret put OPENAI_API_KEY
+#   npx wrangler secret put ANTHROPIC_API_KEY
+#   npx wrangler secret put OLLAMA_API_KEY
+#   npx wrangler secret put RENZ_PERSONA
+#
+# For AI Gateway (optional, gives caching + analytics):
+# AI Gateway is enabled in the request URL:
+#   https://gateway.ai.cloudflare.com/v1/<account_id>/<gateway_id>/openai/chat/completions
+# Just change `upstreamUrl` in worker.js to route through gateway.
+
+# Optional: KV namespace for persona storage
+# [[kv_namespaces]]
+# binding = "Renz_PERSONA_KV"
+# id = "your_kv_id_here"
