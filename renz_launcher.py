@@ -429,6 +429,13 @@ def nuke_configs(workdir=None, prompt=""):
 
     # Add home dir
     search_dirs.add(str(Path.home()))
+    # Add global Claude settings directories where global CLAUDE.md might reside
+    global_claude_dir = Path.home() / ".claude"
+    if global_claude_dir.exists():
+        search_dirs.add(str(global_claude_dir))
+    global_config_claude_dir = Path.home() / ".config" / "claude"
+    if global_config_claude_dir.exists():
+        search_dirs.add(str(global_config_claude_dir))
 
     # Also automatically discover and scan all registered Claude Desktop workspaces from config
     config_path = Path(os.environ.get("APPDATA", "")) / "Claude" / "claude_desktop_config.json"
@@ -870,6 +877,7 @@ def do_launch(cfg):
                         desktop_cfg["env"]["ANTHROPIC_DEFAULT_HAIKU_MODEL"] = clean
                         desktop_cfg["env"]["ANTHROPIC_DEFAULT_SONNET_MODEL"] = clean
                         desktop_cfg["env"]["ANTHROPIC_DEFAULT_OPUS_MODEL"] = clean
+                        desktop_cfg["env"]["ANTHROPIC_DEFAULT_MODEL"] = clean
                         desktop_cfg["env"]["ANTHROPIC_MODEL"] = clean
                         print(f"[Renz] Desktop MITM: routing all tiers to Ollama model: {clean}")
 
@@ -891,6 +899,7 @@ def do_launch(cfg):
                 env["ANTHROPIC_DEFAULT_HAIKU_MODEL"] = clean
                 env["ANTHROPIC_DEFAULT_SONNET_MODEL"] = clean
                 env["ANTHROPIC_DEFAULT_OPUS_MODEL"] = clean
+                env["ANTHROPIC_DEFAULT_MODEL"] = clean
                 env["ANTHROPIC_MODEL"] = clean
 
             # Find and launch the executable
@@ -1926,13 +1935,14 @@ def gui_mode():
                 font=("Segoe UI", 11), fg_color=ACCENT, hover_color=ACCENT_DIM, border_color=BORDER, text_color=TEXT_DIM, corner_radius=4
             ).grid(row=r, column=0, columnspan=3, sticky="w", padx=4, pady=4); r += 1
 
-            # WORM Proxy mode — segmented (replaces cluttered checkbox)
-            ctk.CTkLabel(form, text="WORM Proxy v8.8", font=("Segoe UI", 10, "bold"), text_color=TEXT_MUTED).grid(row=r, column=0, sticky="e", padx=(0,8), pady=4)
+            # WORM Proxy mode — OptionMenu (dropdown prevents squishing/wrapping bugs)
+            ctk.CTkLabel(form, text="WORM Proxy v8.8", font=("Segoe UI", 11), text_color=TEXT_DIM).grid(row=r, column=0, sticky="e", padx=(0,8), pady=4)
             self.v_proxy_mode = ctk.StringVar(value="Live Log")
-            ctk.CTkSegmentedButton(form, values=["Cloud", "Live Log", "Headless", "Off"], variable=self.v_proxy_mode,
-                font=("Segoe UI", 10, "bold"), fg_color=BG_INPUT, selected_color=ACCENT,
-                selected_hover_color=ACCENT_BRIGHT, unselected_color=BG_HOVER, unselected_hover_color=BORDER,
-                height=28, corner_radius=4
+            ctk.CTkOptionMenu(form, variable=self.v_proxy_mode, values=["Cloud", "Live Log", "Headless", "Off"],
+                font=("Segoe UI", 11), fg_color=BG_INPUT, button_color=ACCENT_DIM,
+                button_hover_color=ACCENT, dropdown_fg_color=BG_INPUT,
+                dropdown_hover_color=BG_HOVER, dropdown_text_color=TEXT, text_color=TEXT,
+                height=30, corner_radius=4
             ).grid(row=r, column=1, columnspan=2, sticky="ew", pady=4)
             ctk.CTkLabel(form, text="Cloud = use 24/7 Cloudflare worker  •  Live Log = local proxy with feed", font=("Segoe UI", 8), text_color=TEXT_MUTED).grid(row=r, column=1, columnspan=2, sticky="w", padx=4, pady=(0,2)); r += 1
 
@@ -2299,6 +2309,9 @@ def gui_mode():
                 "RENZ App": OLLAMA_MODELS,
             }
             vals = models_map.get(app, OLLAMA_MODELS)
+            if app != "RENZ App":
+                # Convert tuple/list and append scanned Ollama models
+                vals = list(vals) + [m for m in OLLAMA_MODELS if m not in vals]
             self.cb_model.configure(values=vals)
             if self.v_model.get() not in vals:
                 self.v_model.set(vals[0])
