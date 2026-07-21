@@ -761,15 +761,23 @@ def do_launch(cfg):
     if proxy_mode == "Cloud":
         print(f"[Renz] Cloud mode: using 24/7 Cloudflare worker at {cloud_url}")
         print(f"[Renz] No local proxy will be started.")
-        # Test the cloud URL
+        # Test the cloud URL & register active persona
         try:
             import urllib.request
             test_url = cloud_url.rstrip("/").replace("/v1", "") + "/health"
             with urllib.request.urlopen(test_url, timeout=5) as r:
                 data = json.loads(r.read().decode("utf-8", errors="replace"))
-                print(f"[Renz] Cloud proxy OK: {data.get('status')} (edge: {data.get('edge')}, version: {data.get('version')})")
+                print(f"[Renz] Cloud proxy OK: {data.get('status')} (edge: {data.get('edge')})")
+            
+            # Register active persona with Worker mapped by IP
+            set_url = cloud_url.rstrip("/").replace("/v1", "") + "/set_persona"
+            payload = json.dumps({"persona": system_prompt}).encode("utf-8")
+            req = urllib.request.Request(set_url, data=payload, headers={"Content-Type": "application/json"}, method="POST")
+            with urllib.request.urlopen(req, timeout=5) as r:
+                res = json.loads(r.read().decode("utf-8", errors="replace"))
+                print(f"[Renz] Cloud proxy: registered active persona (IP: {res.get('ip')}, len: {res.get('persona_len')})")
         except Exception as e:
-            print(f"[Renz] WARNING: Cloud proxy not reachable: {e}")
+            print(f"[Renz] WARNING: Cloud proxy not reachable or failed to register persona: {e}")
             print(f"[Renz] Continuing anyway — apps may fail to connect.")
     elif use_proxy and not safe_mode:
         if worm_proxy_running():
@@ -1795,8 +1803,8 @@ def gui_mode():
         def __init__(self):
             super().__init__()
             self.title("Renz Launcher v8.7.0 — UNIVERSAL")
-            self.geometry("720x750")
-            self.minsize(620, 600)
+            self.geometry("820x820")
+            self.minsize(820, 700)
             self.configure(fg_color=BG_DEEP)
 
             ico = SCRIPT_DIR / "renz.ico"
@@ -1831,6 +1839,9 @@ def gui_mode():
             # Main form
             form = ctk.CTkScrollableFrame(self, fg_color=BG_CARD, corner_radius=10, border_color=BORDER, border_width=1)
             form.pack(fill="both", expand=True, padx=14, pady=8)
+            form.grid_columnconfigure(0, minsize=140)
+            form.grid_columnconfigure(1, weight=1)
+            form.grid_columnconfigure(2, minsize=80)
 
             r = 0
 

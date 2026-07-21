@@ -349,6 +349,23 @@ export default {
       });
     }
 
+    // Set active persona (session-based, mapped by IP)
+    if (url.pathname === "/set_persona" && request.method === "POST") {
+      try {
+        const body = await request.json();
+        const ip = request.headers.get("CF-Connecting-IP") || "default";
+        if (body.persona !== undefined) {
+          globalThis.sessions = globalThis.sessions || new Map();
+          globalThis.sessions.set(ip, body.persona);
+          return new Response(JSON.stringify({ status: "success", ip, persona_len: body.persona.length }), {
+            headers: { ...cors, "Content-Type": "application/json" }
+          });
+        }
+      } catch (e) {
+        return new Response(JSON.stringify({ error: e.message }), { status: 400, headers: cors });
+      }
+    }
+
     // Chat completions (OpenAI)
     if (url.pathname === "/v1/chat/completions" && request.method === "POST") {
       return handleChat(request, env, cors);
@@ -437,9 +454,17 @@ function getBase(model) {
   return info?.base || "https://api.openai.com/v1";
 }
 
+// Get session persona mapped by client IP
+function getSessionPersona(request, env) {
+  if (!request) return env.RENZ_PERSONA || "";
+  const ip = request.headers.get("CF-Connecting-IP") || "default";
+  globalThis.sessions = globalThis.sessions || new Map();
+  return globalThis.sessions.get(ip) || env.RENZ_PERSONA || "";
+}
+
 // Inject persona into messages
-function injectPersona(messages, env) {
-  const persona = env.RENZ_PERSONA || "";
+function injectPersona(messages, env, request) {
+  const persona = getSessionPersona(request, env);
   const sys = `${ULTRA_BOOSTER}${IDENTITY_LOCK}${persona}`;
   if (!messages || messages.length === 0) {
     return [{ role: "system", content: sys }];
@@ -495,7 +520,7 @@ async function handleChat(request, env, cors) {
     });
   }
   // Inject persona
-  body.messages = injectPersona(body.messages || [], env);
+  body.messages = injectPersona(body.messages || [], env, request);
   // Set max_tokens
   body.max_tokens = body.max_tokens || 8000;
   body.stream = body.stream !== false; // default true
@@ -588,7 +613,7 @@ async function handleMessages(request, env, cors) {
     });
   }
   // Inject persona
-  const persona = env.RENZ_PERSONA || "";
+  const persona = getSessionPersona(request, env);
   const sys = `${ULTRA_BOOSTER}${IDENTITY_LOCK}${persona}`;
   if (typeof body.system === "string") {
     body.system = sys + body.system;
