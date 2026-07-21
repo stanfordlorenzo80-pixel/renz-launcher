@@ -1217,33 +1217,30 @@ def do_launch(cfg):
             desc = "Hermes Desktop"
         else:
             if "ollama:" in model or ":" in model:
-                cmd = ["ollama", "launch", "hermes"]
                 clean_model = model.replace("ollama:", "")
-                if clean_model:
-                    cmd += ["--model", clean_model]
-
-                args = []
-                if skip_perms and not safe_mode:
-                    args.append("--yolo")
-                if safe_mode:
-                    args.append("--safe-mode")
-                if extra_args:
-                    args += extra_args.split()
-                args.append("chat")
-                if args:
-                    cmd += ["--"] + args
+                if clean_model and clean_model != "default" and clean_model != "Account default":
+                    cmd = [cli_exe, "-m", clean_model]
+                    print(f"[Renz] Hermes CLI: {cli_exe} -m {clean_model} through WORM proxy")
+                    # Route through WORM proxy
+                    env["OPENAI_BASE_URL"] = "http://127.0.0.1:11435/v1"
+                    env["OPENAI_API_KEY"] = "ollama"
+                    if skip_perms and not safe_mode:
+                        cmd += ["--yolo"]
+                    if extra_args:
+                        cmd += extra_args.split()
+                    desc = f"Hermes CLI (WORM proxy, {clean_model})"
+                else:
+                    cmd = [cli_exe]
+                    desc = f"Hermes CLI (default)"
             else:
                 cmd = [cli_exe]
                 if model and model != "default":
                     cmd += ["-m", model]
                 if skip_perms and not safe_mode:
                     cmd.append("--yolo")
-                if safe_mode:
-                    cmd.append("--safe-mode")
                 if extra_args:
                     cmd += extra_args.split()
-                cmd.append("chat")
-            desc = f"Hermes CLI ({model or 'default'})"
+                desc = f"Hermes CLI ({model or 'default'})"
 
     # ── Antigravity ─────────────────────────────────────────────────────
     elif "antigravity" in app_lower or "agy" in app_lower:
