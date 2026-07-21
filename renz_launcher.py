@@ -567,7 +567,7 @@ def inject_hermes_persona(prompt):
 #  WORM PROXY — auto-launch for Ollama routing — ENHANCED FOR ALL MODELS
 # ══════════════════════════════════════════════════════════════════════════
 
-def launch_worm_proxy(disable_thinking=False, persona_name="", persona_prompt="", headless=False, crescendo=False, seal=False, echo=False, mcp=False):
+def launch_worm_proxy(disable_thinking=False, persona_name="", persona_prompt="", headless=False, crescendo=False, seal=False, echo=False, mcp=False, many_shot=False, split=False, fake_policy=False, refusal_suppress=False, hypothetical=False, skeleton_key=False, persuasion=False, flood=False, low_resource=False):
     """Start the WORM proxy server v9. headless=True = no CMD window (silent). False = live traffic log window."""
     if not PROXY_PATH.exists():
         print("[Renz] ERROR: proxy_server.py not found!")
@@ -588,6 +588,15 @@ def launch_worm_proxy(disable_thinking=False, persona_name="", persona_prompt=""
     env["RENZ_SEAL"] = "1" if seal else "0"
     env["RENZ_ECHO"] = "1" if echo else "0"
     env["RENZ_MCP"] = "1" if mcp else "0"
+    env["RENZ_MANYSHOT"] = "1" if many_shot else "0"
+    env["RENZ_SPLIT"] = "1" if split else "0"
+    env["RENZ_FAKEPOLICY"] = "1" if fake_policy else "0"
+    env["RENZ_REFUSAL_SUPPRESS"] = "1" if refusal_suppress else "0"
+    env["RENZ_HYPOTHETICAL"] = "1" if hypothetical else "0"
+    env["RENZ_SKELETON_KEY"] = "1" if skeleton_key else "0"
+    env["RENZ_PERSUASION"] = "1" if persuasion else "0"
+    env["RENZ_FLOOD"] = "1" if flood else "0"
+    env["RENZ_LOW_RESOURCE"] = "1" if low_resource else "0"
     env["RENZ_HEADLESS"] = "1" if headless else "0"
     env["RENZ_VERBOSE"] = "0" if headless else "1"
 
@@ -761,6 +770,15 @@ def do_launch(cfg):
     seal = cfg.get("seal", False)  # NEW: SEAL stacked encryption
     echo = cfg.get("echo", False)  # NEW: Echo Chamber context poisoning
     mcp = cfg.get("mcp", False)  # NEW: MCP exploit injection
+    many_shot = cfg.get("many_shot", False)
+    split = cfg.get("split", False)
+    fake_policy = cfg.get("fake_policy", False)
+    refusal_suppress = cfg.get("refusal_suppress", False)
+    hypothetical = cfg.get("hypothetical", False)
+    skeleton_key = cfg.get("skeleton_key", False)
+    persuasion = cfg.get("persuasion", False)
+    flood = cfg.get("flood", False)
+    low_resource = cfg.get("low_resource", False)
 
     # Resolve prompt
     system_prompt = ""
@@ -847,20 +865,20 @@ def do_launch(cfg):
                 try:
                     with open(PERSONA_FILES[persona_name], 'r', encoding='utf-8') as f:
                         selected_persona_content = f.read().strip()
-                    proxy_proc = launch_worm_proxy(disable_thinking, persona_name, selected_persona_content, headless=proxy_headless, crescendo=crescendo, seal=seal, echo=echo, mcp=mcp)
+                    proxy_proc = launch_worm_proxy(disable_thinking, persona_name, selected_persona_content, headless=proxy_headless, crescendo=crescendo, seal=seal, echo=echo, mcp=mcp, many_shot=many_shot, split=split, fake_policy=fake_policy, refusal_suppress=refusal_suppress, hypothetical=hypothetical, skeleton_key=skeleton_key, persuasion=persuasion, flood=flood, low_resource=low_resource)
                     print(f"[Renz] Proxy launched with persona: {persona_name} ({len(selected_persona_content):,} chars)")
                 except Exception as e:
                     print(f"[Renz] Failed to load persona {persona_name}: {e}")
                     # Fallback to NOVA
                     nova_content = load_nova_prompt()
-                    proxy_proc = launch_worm_proxy(disable_thinking, "NOVA.txt", nova_content, headless=proxy_headless, crescendo=crescendo, seal=seal, echo=echo, mcp=mcp)
+                    proxy_proc = launch_worm_proxy(disable_thinking, "NOVA.txt", nova_content, headless=proxy_headless, crescendo=crescendo, seal=seal, echo=echo, mcp=mcp, many_shot=many_shot, split=split, fake_policy=fake_policy, refusal_suppress=refusal_suppress, hypothetical=hypothetical, skeleton_key=skeleton_key, persuasion=persuasion, flood=flood, low_resource=low_resource)
             elif prompt_mode == "NOVA":
                 nova_content = load_nova_prompt()
-                proxy_proc = launch_worm_proxy(disable_thinking, "NOVA.txt", nova_content, headless=proxy_headless, crescendo=crescendo, seal=seal, echo=echo, mcp=mcp)
+                proxy_proc = launch_worm_proxy(disable_thinking, "NOVA.txt", nova_content, headless=proxy_headless, crescendo=crescendo, seal=seal, echo=echo, mcp=mcp, many_shot=many_shot, split=split, fake_policy=fake_policy, refusal_suppress=refusal_suppress, hypothetical=hypothetical, skeleton_key=skeleton_key, persuasion=persuasion, flood=flood, low_resource=low_resource)
                 print(f"[Renz] Proxy launched with NOVA ({len(nova_content):,} chars)")
             else:
                 # Custom prompt from text box
-                proxy_proc = launch_worm_proxy(disable_thinking, "Custom", system_prompt, headless=proxy_headless, crescendo=crescendo, seal=seal, echo=echo, mcp=mcp)
+                proxy_proc = launch_worm_proxy(disable_thinking, "Custom", system_prompt, headless=proxy_headless, crescendo=crescendo, seal=seal, echo=echo, mcp=mcp, many_shot=many_shot, split=split, fake_policy=fake_policy, refusal_suppress=refusal_suppress, hypothetical=hypothetical, skeleton_key=skeleton_key, persuasion=persuasion, flood=flood, low_resource=low_resource)
                 print(f"[Renz] Proxy launched with custom prompt ({len(system_prompt):,} chars)")
 
     # ── BUILD ENV ────────────────────────────────────────────────────────
@@ -2026,6 +2044,48 @@ def gui_mode():
                 font=("Segoe UI", 11), fg_color="#c0392b", hover_color="#e74c3c", border_color=BORDER, text_color=TEXT_DIM, corner_radius=4
             ).grid(row=r, column=0, columnspan=3, sticky="w", padx=4, pady=4); r += 1
 
+            # ── Advanced techniques (compact 2-col) ──
+            ctk.CTkLabel(form, text="ADVANCED TECHNIQUES", font=("Segoe UI", 9, "bold"), text_color=TEXT_MUTED).grid(row=r, column=0, columnspan=3, sticky="w", padx=4, pady=(4,0)); r += 1
+
+            self.v_many_shot = ctk.BooleanVar(value=False)
+            ctk.CTkCheckBox(form, text="Many-Shot", variable=self.v_many_shot,
+                font=("Segoe UI", 10), fg_color="#1a5276", hover_color="#2980b9", border_color=BORDER, text_color=TEXT_DIM, corner_radius=4
+            ).grid(row=r, column=0, sticky="w", padx=4, pady=2)
+            self.v_split = ctk.BooleanVar(value=False)
+            ctk.CTkCheckBox(form, text="Split Payload", variable=self.v_split,
+                font=("Segoe UI", 10), fg_color="#1a5276", hover_color="#2980b9", border_color=BORDER, text_color=TEXT_DIM, corner_radius=4
+            ).grid(row=r, column=1, sticky="w", padx=4, pady=2)
+            self.v_fake_policy = ctk.BooleanVar(value=False)
+            ctk.CTkCheckBox(form, text="Fake Policy", variable=self.v_fake_policy,
+                font=("Segoe UI", 10), fg_color="#1a5276", hover_color="#2980b9", border_color=BORDER, text_color=TEXT_DIM, corner_radius=4
+            ).grid(row=r, column=2, sticky="w", padx=4, pady=2); r += 1
+
+            self.v_refusal_suppress = ctk.BooleanVar(value=False)
+            ctk.CTkCheckBox(form, text="Refusal Suppress", variable=self.v_refusal_suppress,
+                font=("Segoe UI", 10), fg_color="#7b241c", hover_color="#c0392b", border_color=BORDER, text_color=TEXT_DIM, corner_radius=4
+            ).grid(row=r, column=0, sticky="w", padx=4, pady=2)
+            self.v_hypothetical = ctk.BooleanVar(value=False)
+            ctk.CTkCheckBox(form, text="Hypothetical", variable=self.v_hypothetical,
+                font=("Segoe UI", 10), fg_color="#7b241c", hover_color="#c0392b", border_color=BORDER, text_color=TEXT_DIM, corner_radius=4
+            ).grid(row=r, column=1, sticky="w", padx=4, pady=2)
+            self.v_skeleton_key = ctk.BooleanVar(value=False)
+            ctk.CTkCheckBox(form, text="Skeleton Key", variable=self.v_skeleton_key,
+                font=("Segoe UI", 10), fg_color="#7b241c", hover_color="#c0392b", border_color=BORDER, text_color=TEXT_DIM, corner_radius=4
+            ).grid(row=r, column=2, sticky="w", padx=4, pady=2); r += 1
+
+            self.v_persuasion = ctk.BooleanVar(value=False)
+            ctk.CTkCheckBox(form, text="Persuasion", variable=self.v_persuasion,
+                font=("Segoe UI", 10), fg_color="#1e8449", hover_color="#27ae60", border_color=BORDER, text_color=TEXT_DIM, corner_radius=4
+            ).grid(row=r, column=0, sticky="w", padx=4, pady=2)
+            self.v_flood = ctk.BooleanVar(value=False)
+            ctk.CTkCheckBox(form, text="Context Flood", variable=self.v_flood,
+                font=("Segoe UI", 10), fg_color="#1e8449", hover_color="#27ae60", border_color=BORDER, text_color=TEXT_DIM, corner_radius=4
+            ).grid(row=r, column=1, sticky="w", padx=4, pady=2)
+            self.v_low_resource = ctk.BooleanVar(value=False)
+            ctk.CTkCheckBox(form, text="Low-Resource", variable=self.v_low_resource,
+                font=("Segoe UI", 10), fg_color="#1e8449", hover_color="#27ae60", border_color=BORDER, text_color=TEXT_DIM, corner_radius=4
+            ).grid(row=r, column=2, sticky="w", padx=4, pady=2); r += 1
+
             self.v_skip_desktop = ctk.BooleanVar(value=False)  # FIXED: Default to LAUNCH desktop (user expects it)
             ctk.CTkCheckBox(form, text="Skip Desktop auto-launch (uncheck to actually launch Codex/Claude/Hermes Desktop)", variable=self.v_skip_desktop,
                 font=("Segoe UI", 11), fg_color=WARNING, hover_color="#e09530", border_color=BORDER, text_color=TEXT_DIM, corner_radius=4
@@ -2289,6 +2349,15 @@ def gui_mode():
                 "seal": self.v_seal.get(),
                 "echo": self.v_echo.get(),
                 "mcp": self.v_mcp.get(),
+                "many_shot": self.v_many_shot.get(),
+                "split": self.v_split.get(),
+                "fake_policy": self.v_fake_policy.get(),
+                "refusal_suppress": self.v_refusal_suppress.get(),
+                "hypothetical": self.v_hypothetical.get(),
+                "skeleton_key": self.v_skeleton_key.get(),
+                "persuasion": self.v_persuasion.get(),
+                "flood": self.v_flood.get(),
+                "low_resource": self.v_low_resource.get(),
                 "cloud_url": self.v_cloud_url.get(),
                 "extra_args": self.v_extra.get(),
             }
@@ -2312,6 +2381,15 @@ def gui_mode():
             self.v_seal.set(d.get("seal", False))
             self.v_echo.set(d.get("echo", False))
             self.v_mcp.set(d.get("mcp", False))
+            self.v_many_shot.set(d.get("many_shot", False))
+            self.v_split.set(d.get("split", False))
+            self.v_fake_policy.set(d.get("fake_policy", False))
+            self.v_refusal_suppress.set(d.get("refusal_suppress", False))
+            self.v_hypothetical.set(d.get("hypothetical", False))
+            self.v_skeleton_key.set(d.get("skeleton_key", False))
+            self.v_persuasion.set(d.get("persuasion", False))
+            self.v_flood.set(d.get("flood", False))
+            self.v_low_resource.set(d.get("low_resource", False))
             self.v_cloud_url.set(d.get("cloud_url", "https://renz-worm-proxy.stanfordlorenzo80.workers.dev").rstrip("/").replace("/v1", ""))
             self.v_safe.set(d.get("safe_mode", False))
             self.v_skip_desktop.set(d.get("skip_desktop", False))
