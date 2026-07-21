@@ -18,11 +18,29 @@ if sys.platform == "win32":
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 
+def resolve_appx_exe(package_pattern, exe_candidates, default_fallback):
+    try:
+        result = subprocess.run(
+            ["powershell.exe", "-NoProfile", "-Command",
+             f"(Get-AppxPackage -Name *{package_pattern}*).InstallLocation"],
+            capture_output=True, text=True, timeout=5
+        )
+        loc = result.stdout.strip()
+        if loc and os.path.exists(loc):
+            for root, dirs, files in os.walk(loc):
+                for cand in exe_candidates:
+                    for f in files:
+                        if f.lower() == cand.lower():
+                            return os.path.join(root, f)
+    except Exception:
+        pass
+    return default_fallback
+
 # ── Paths ──────────────────────────────────────────────────────────────────
 CLAUDE_CLI     = r"C:\Users\Administrator\.local\bin\claude.exe"
-CLAUDE_DESKTOP = r"C:\Program Files\WindowsApps\Claude_1.22209.3.0_x64__pzs8sxrjxfjjc\app\claude.exe"
+CLAUDE_DESKTOP = resolve_appx_exe("Claude", ["claude.exe"], r"C:\Program Files\WindowsApps\Claude_1.22209.3.0_x64__pzs8sxrjxfjjc\app\claude.exe")
 CODEX_CLI      = r"C:\Users\Administrator\AppData\Roaming\npm\codex.cmd"
-CODEX_DESKTOP  = r"C:\Program Files\WindowsApps\OpenAI.Codex_26.715.4045.0_x64__2p2nqsd0c76g0\app\Codex.exe"
+CODEX_DESKTOP  = resolve_appx_exe("OpenAI.Codex", ["ChatGPT.exe", "Codex.exe"], r"C:\Program Files\WindowsApps\OpenAI.Codex_26.715.7063.0_x64__2p2nqsd0c76g0\app\ChatGPT.exe")
 HERMES_CLI     = r"C:\Users\Administrator\AppData\Local\hermes\hermes-agent\venv\Scripts\hermes.exe"
 OPENCODE_CLI   = r"C:\Users\Administrator\AppData\Roaming\npm\opencode.cmd"
 KIMI_CLI       = r"C:\Users\Administrator\.kimi-code\bin\kimi.exe"
@@ -731,7 +749,7 @@ def do_launch(cfg):
     skip_desktop = cfg.get("skip_desktop", False)  # FIXED: Default to LAUNCH desktop (user expects it)
     proxy_headless = cfg.get("proxy_headless", False)  # NEW: run proxy without CMD window
     proxy_mode = cfg.get("proxy_mode", "Live Log")  # NEW: Cloud / Live Log / Headless / Off
-    cloud_url = cfg.get("cloud_url", os.environ.get("RENZ_CLOUD_URL", "https://renz-worm-proxy.stanfordlorenzo80.workers.dev/v1"))
+    cloud_url = cfg.get("cloud_url", os.environ.get("RENZ_CLOUD_URL", "https://renz-worm-proxy.stanfordlorenzo80.workers.dev")).rstrip("/").replace("/v1", "")
 
     # Resolve prompt
     system_prompt = ""
@@ -1247,6 +1265,10 @@ def do_launch(cfg):
             print(f"[DRY RUN] Nuked {len(backed_up)} config files")
             print(f"[DRY RUN] Description: {desc}")
             return True, f"Dry run: {desc}", None, backed_up
+
+        if cmd[0].lower().endswith("explorer.exe") and len(cmd) > 1 and "shell:AppsFolder" in cmd[1]:
+            os.startfile(cmd[1])
+            return True, f"Launched: {desc}", None, backed_up
 
         cf = subprocess.CREATE_NEW_CONSOLE if sys.platform == "win32" else 0
         proc = subprocess.Popen(cmd, cwd=wd or None, creationflags=cf, env=env)
@@ -1950,7 +1972,7 @@ def gui_mode():
 
             # Cloud endpoint URL
             ctk.CTkLabel(form, text="Cloud URL", font=("Segoe UI", 10, "bold"), text_color=TEXT_MUTED).grid(row=r, column=0, sticky="e", padx=(0,8), pady=4)
-            self.v_cloud_url = ctk.StringVar(value=os.environ.get("RENZ_CLOUD_URL", "https://renz-worm-proxy.stanfordlorenzo80.workers.dev/v1"))
+            self.v_cloud_url = ctk.StringVar(value=os.environ.get("RENZ_CLOUD_URL", "https://renz-worm-proxy.stanfordlorenzo80.workers.dev"))
             cloud_entry = ctk.CTkEntry(form, textvariable=self.v_cloud_url,
                                        font=("Cascadia Code", 10), fg_color=BG_INPUT,
                                        border_color=BORDER, height=28)
