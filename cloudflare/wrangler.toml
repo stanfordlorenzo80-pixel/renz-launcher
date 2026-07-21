@@ -1,11 +1,12 @@
 name = "renz-worm-proxy"
-main = "src/worker.js"
+main = "worker.js"
 compatibility_date = "2024-09-23"
+workers_dev = true
 
-# Routes all paths to the worker
-routes = [
-  { pattern = "renz.example.com/*", zone_name = "example.com" }
-]
+
+# Routes configuration (using workers.dev instead of custom domain)
+routes = []
+
 
 # Or for workers.dev subdomain (no domain needed):
 # routes = []

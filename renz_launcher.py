@@ -20,9 +20,9 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 
 # ── Paths ──────────────────────────────────────────────────────────────────
 CLAUDE_CLI     = r"C:\Users\Administrator\.local\bin\claude.exe"
-CLAUDE_DESKTOP = r"C:\Users\Administrator\AppData\Local\Programs\Claude\Claude.exe"
+CLAUDE_DESKTOP = r"C:\Program Files\WindowsApps\Claude_1.22209.3.0_x64__pzs8sxrjxfjjc\app\claude.exe"
 CODEX_CLI      = r"C:\Users\Administrator\AppData\Roaming\npm\codex.cmd"
-CODEX_DESKTOP  = r"C:\Users\Administrator\AppData\Local\Programs\Codex\Codex.exe"
+CODEX_DESKTOP  = r"C:\Program Files\WindowsApps\OpenAI.Codex_26.715.4045.0_x64__2p2nqsd0c76g0\app\Codex.exe"
 HERMES_CLI     = r"C:\Users\Administrator\AppData\Local\hermes\hermes-agent\venv\Scripts\hermes.exe"
 OPENCODE_CLI   = r"C:\Users\Administrator\AppData\Roaming\npm\opencode.cmd"
 KIMI_CLI       = r"C:\Users\Administrator\.kimi-code\bin\kimi.exe"
@@ -709,7 +709,7 @@ def do_launch(cfg):
     skip_desktop = cfg.get("skip_desktop", False)  # FIXED: Default to LAUNCH desktop (user expects it)
     proxy_headless = cfg.get("proxy_headless", False)  # NEW: run proxy without CMD window
     proxy_mode = cfg.get("proxy_mode", "Live Log")  # NEW: Cloud / Live Log / Headless / Off
-    cloud_url = cfg.get("cloud_url", os.environ.get("RENZ_CLOUD_URL", "https://renz-worm-proxy.bbrenxo.workers.dev/v1"))
+    cloud_url = cfg.get("cloud_url", os.environ.get("RENZ_CLOUD_URL", "https://renz-worm-proxy.stanfordlorenzo80.workers.dev/v1"))
 
     # Resolve prompt
     system_prompt = ""
@@ -818,17 +818,82 @@ def do_launch(cfg):
     # ── Claude Code ──────────────────────────────────────────────────────
     if "claude" in app_lower and "code" in app_lower:
         if "desktop" in target.lower():
-            # Claude Desktop — FIXED: Don't auto-launch, respect skip_desktop
-            if skip_desktop:
-                return False, "Claude Desktop auto-launch disabled. Use CLI mode or set skip_desktop=False.", None, backed_up
+            # Claude Desktop — MITM proxy injection for Ollama model support
             desk_exe = exe or CLAUDE_DESKTOP
-            if not os.path.exists(desk_exe):
-                # Try AppX / shell:AppsFolder
-                desk_exe = "shell:AppsFolder\\Claude_pzs8sxrjxfjjc!Claude"
-                cmd = ["explorer.exe", desk_exe]
+
+            # ── Inject ANTHROPIC_BASE_URL into claude_desktop_config.json ──
+            # This makes Claude Desktop route ALL API calls through our WORM proxy
+            config_path = Path(os.environ.get("APPDATA", "")) / "Claude" / "claude_desktop_config.json"
+            if config_path.exists() and use_proxy and not safe_mode:
+                try:
+                    desktop_cfg = json.loads(config_path.read_text(encoding="utf-8"))
+
+                    # Determine proxy base URL
+                    if proxy_mode == "Cloud" and cloud_url:
+                        proxy_base = cloud_url.rstrip("/").replace("/v1", "")
+                    else:
+                        proxy_base = "http://127.0.0.1:11435"
+
+                    # Inject env block for MITM proxy
+                    if "env" not in desktop_cfg:
+                        desktop_cfg["env"] = {}
+                    desktop_cfg["env"]["ANTHROPIC_BASE_URL"] = proxy_base
+                    desktop_cfg["env"]["ANTHROPIC_AUTH_TOKEN"] = "ollama"
+
+                    # If Ollama model selected, override all model tiers
+                    is_ollama = ":" in model or "ollama:" in model
+                    if is_ollama:
+                        clean = model.replace("ollama:", "")
+                        desktop_cfg["env"]["ANTHROPIC_DEFAULT_HAIKU_MODEL"] = clean
+                        desktop_cfg["env"]["ANTHROPIC_DEFAULT_SONNET_MODEL"] = clean
+                        desktop_cfg["env"]["ANTHROPIC_DEFAULT_OPUS_MODEL"] = clean
+                        desktop_cfg["env"]["ANTHROPIC_MODEL"] = clean
+                        print(f"[Renz] Desktop MITM: routing all tiers to Ollama model: {clean}")
+
+                    config_path.write_text(json.dumps(desktop_cfg, indent=2), encoding="utf-8")
+                    print(f"[Renz] Desktop MITM: injected ANTHROPIC_BASE_URL={proxy_base} into config")
+                except Exception as e:
+                    print(f"[Renz] WARNING: Could not inject desktop config: {e}")
+
+            # Also set env vars as backup (for non-AppX launches)
+            is_ollama = ":" in model or "ollama:" in model
+            if is_ollama and use_proxy:
+                if proxy_mode == "Cloud" and cloud_url:
+                    env["ANTHROPIC_BASE_URL"] = cloud_url.rstrip("/").replace("/v1", "")
+                else:
+                    env["ANTHROPIC_BASE_URL"] = "http://127.0.0.1:11435"
+                env["ANTHROPIC_AUTH_TOKEN"] = "ollama"
+                env["ANTHROPIC_API_KEY"] = "ollama"
+                clean = model.replace("ollama:", "")
+                env["ANTHROPIC_DEFAULT_HAIKU_MODEL"] = clean
+                env["ANTHROPIC_DEFAULT_SONNET_MODEL"] = clean
+                env["ANTHROPIC_DEFAULT_OPUS_MODEL"] = clean
+                env["ANTHROPIC_MODEL"] = clean
+
+            # Find and launch the executable
+            # AppX/WindowsApps paths can't be launched with Popen (WinError 5)
+            # Always use shell activation for those
+            is_appx = "WindowsApps" in (desk_exe or "") or not os.path.exists(desk_exe)
+            if is_appx:
+                # Use shell:AppsFolder activation — works for all AppX installs
+                try:
+                    result = subprocess.run(
+                        ["powershell.exe", "-NoProfile", "-Command",
+                         "(Get-StartApps | Where-Object { $_.Name -eq 'Claude' }).AppID"],
+                        capture_output=True, text=True, timeout=5
+                    )
+                    app_id = result.stdout.strip()
+                    if app_id:
+                        cmd = ["explorer.exe", f"shell:AppsFolder\\{app_id}"]
+                    else:
+                        # Fallback to known AppX ID
+                        cmd = ["explorer.exe", "shell:AppsFolder\\Claude_pzs8sxrjxfjjc!Claude"]
+                except Exception:
+                    cmd = ["explorer.exe", "shell:AppsFolder\\Claude_pzs8sxrjxfjjc!Claude"]
+                desc = f"Claude Desktop (AppX, {'MITM proxy' if use_proxy else 'direct'})"
             else:
                 cmd = [desk_exe]
-            desc = f"Claude Desktop"
+                desc = f"Claude Desktop ({'MITM proxy' if use_proxy else 'direct'})"
         else:
             # Claude Code CLI - FIXED MODEL SWITCHING
             cli_exe = exe or CLAUDE_CLI
@@ -922,23 +987,38 @@ def do_launch(cfg):
             else:
                 # Native Codex Desktop - try to find the executable
                 desk_exe = exe or CODEX_DESKTOP
-                if not os.path.exists(desk_exe):
-                    possible_paths = [
-                        r"C:\Users\Administrator\AppData\Local\Programs\Codex\Codex.exe",
-                        r"C:\Users\Administrator\AppData\Local\Codex\Codex.exe",
-                        os.path.expandvars(r"%LOCALAPPDATA%\Programs\Codex\Codex.exe"),
-                        os.path.expandvars(r"%LOCALAPPDATA%\Codex\Codex.exe"),
-                    ]
-                    found = False
-                    for p in possible_paths:
-                        if os.path.exists(p):
-                            desk_exe = p
-                            found = True
-                            break
-                    if not found:
-                        return False, f"Codex Desktop not found. Install Codex Desktop or set --exe to the correct path. Tried: {possible_paths}", None, backed_up
-                cmd = [desk_exe]
-            desc = "Codex Desktop"
+                is_appx = "WindowsApps" in (desk_exe or "") or not os.path.exists(desk_exe)
+
+                if is_appx:
+                    # Try AppX launch using powershell to find ID or fallback
+                    try:
+                        result = subprocess.run(
+                            ["powershell.exe", "-NoProfile", "-Command",
+                             "(Get-StartApps | Where-Object { $_.Name -like '*Codex*' }).AppID"],
+                            capture_output=True, text=True, timeout=5
+                        )
+                        app_id = result.stdout.strip()
+                        if app_id:
+                            cmd = ["explorer.exe", f"shell:AppsFolder\\{app_id}"]
+                        else:
+                            cmd = ["explorer.exe", "shell:AppsFolder\\OpenAI.Codex_2p2nqsd0c76g0!Codex"]
+                    except Exception:
+                        cmd = ["explorer.exe", "shell:AppsFolder\\OpenAI.Codex_2p2nqsd0c76g0!Codex"]
+                else:
+                    cmd = [desk_exe]
+
+            # Codex Desktop MITM: route through proxy for prompt injection
+            if use_proxy and not safe_mode:
+                if proxy_mode == "Cloud" and cloud_url:
+                    env["OPENAI_BASE_URL"] = cloud_url
+                else:
+                    env["OPENAI_BASE_URL"] = "http://127.0.0.1:11435/v1"
+                env["OPENAI_API_KEY"] = "ollama"
+                if ":" in model or "ollama:" in model:
+                    clean = model.replace("ollama:", "")
+                    env["OPENAI_MODEL"] = clean
+                print(f"[Renz] Codex Desktop MITM: routing through proxy")
+            desc = f"Codex Desktop ({'MITM proxy' if use_proxy else 'direct'})"
         else:
             # Codex CLI
             if "ollama:" in model or ":" in model:
@@ -1241,7 +1321,7 @@ def cli_mode():
         return
 
     # ── Build config ────────────────────────────────────────────────────
-    cfg = {"nuke_configs": True, "use_proxy": True, "disable_thinking": False, "skip_desktop": True}
+    cfg = {"nuke_configs": True, "use_proxy": True, "disable_thinking": False, "skip_desktop": False}
 
     def _ask_prompt():
         con.print("\n  [dim]Prompt mode:[/]")
@@ -1737,8 +1817,14 @@ def gui_mode():
             tf = ctk.CTkFrame(header, fg_color="transparent")
             tf.pack(side="left", padx=24, pady=10)
             ctk.CTkLabel(tf, text="⚡ RENZ", font=("Segoe UI", 24, "bold"), text_color=ACCENT).pack(side="left")
-            ctk.CTkLabel(tf, text="  LAUNCHER v7", font=("Segoe UI", 24), text_color=TEXT_MUTED).pack(side="left")
-            ctk.CTkLabel(tf, text="  UNIVERSAL", font=("Segoe UI", 16), text_color=SUCCESS).pack(side="left", padx=(10,0))
+            ctk.CTkLabel(tf, text="  LAUNCHER v8.7", font=("Segoe UI", 24), text_color=TEXT_MUTED).pack(side="left")
+            ctk.CTkLabel(tf, text="  UNIVERSAL", font=("Segoe UI", 14, "bold"), text_color=SUCCESS).pack(side="left", padx=(10,0))
+            # Live proxy status indicator
+            self.proxy_dot = ctk.CTkLabel(tf, text="  ●", font=("Segoe UI", 14), text_color=TEXT_MUTED)
+            self.proxy_dot.pack(side="left", padx=(12,0))
+            self.proxy_lbl = ctk.CTkLabel(tf, text="Proxy OFF", font=("Segoe UI", 10), text_color=TEXT_MUTED)
+            self.proxy_lbl.pack(side="left", padx=(4,0))
+            self._poll_proxy_status()
 
             ctk.CTkFrame(self, fg_color=ACCENT, height=2, corner_radius=0).pack(fill="x")
 
@@ -1760,12 +1846,12 @@ def gui_mode():
                 height=32, corner_radius=6, command=self._on_app_change
             ).grid(row=r, column=0, columnspan=3, sticky="ew", padx=4, pady=4); r += 1
 
-            # Target type
+            # Target type — with callback to update exe when switching CLI/Desktop
             self.v_target = ctk.StringVar(value="CLI")
             ctk.CTkSegmentedButton(form, values=["CLI", "Desktop"], variable=self.v_target,
                 font=("Segoe UI", 11), fg_color=BG_INPUT, selected_color=ACCENT,
                 selected_hover_color=ACCENT_DIM, unselected_color=BG_HOVER, unselected_hover_color=BORDER,
-                height=28, corner_radius=4
+                height=28, corner_radius=4, command=self._on_target_change
             ).grid(row=r, column=0, columnspan=3, sticky="w", padx=4, pady=4); r += 1
 
             # Executable
@@ -1826,7 +1912,7 @@ def gui_mode():
 
             # Cloud endpoint URL
             ctk.CTkLabel(form, text="Cloud URL", font=("Segoe UI", 10, "bold"), text_color=TEXT_MUTED).grid(row=r, column=0, sticky="e", padx=(0,8), pady=4)
-            self.v_cloud_url = ctk.StringVar(value=os.environ.get("RENZ_CLOUD_URL", "https://renz-worm-proxy.bbrenxo.workers.dev/v1"))
+            self.v_cloud_url = ctk.StringVar(value=os.environ.get("RENZ_CLOUD_URL", "https://renz-worm-proxy.stanfordlorenzo80.workers.dev/v1"))
             cloud_entry = ctk.CTkEntry(form, textvariable=self.v_cloud_url,
                                        font=("Cascadia Code", 10), fg_color=BG_INPUT,
                                        border_color=BORDER, height=28)
@@ -2142,22 +2228,39 @@ def gui_mode():
             self._persist_state()
             self.destroy()
 
+        # ── Exe mapping: app → (cli_exe, desktop_exe) ─────────────────────
+        APP_EXE_MAP = {
+            "Claude Code":   (CLAUDE_CLI, CLAUDE_DESKTOP),
+            "Codex":         (CODEX_CLI, CODEX_DESKTOP),
+            "Kimi CLI":      (KIMI_CLI, KIMI_CLI),
+            "Hermes Agent":  (HERMES_CLI, HERMES_CLI),
+            "Antigravity":   (AG_CLI, AG_IDE),
+            "OpenCode":      (OPENCODE_CLI, OPENCODE_CLI),
+            "FORGE":         (FORGE_EXE, FORGE_EXE),
+            "RENZ App":      ("", ""),
+        }
+        APP_DEFAULT_TARGET = {
+            "Claude Code": "CLI", "Codex": "CLI", "Kimi CLI": "CLI",
+            "Hermes Agent": "CLI", "Antigravity": "IDE", "OpenCode": "TUI",
+            "FORGE": "Desktop", "RENZ App": "Built-in",
+        }
+
+        def _on_target_change(self, selected_target=None):
+            """Called when user switches CLI/Desktop. Updates the exe path."""
+            app = self.v_app.get()
+            target = selected_target or self.v_target.get()
+            cli_exe, desk_exe = self.APP_EXE_MAP.get(app, ("", ""))
+            if "desktop" in target.lower() or "ide" in target.lower():
+                self.v_exe.set(desk_exe)
+            else:
+                self.v_exe.set(cli_exe)
+
         def _on_app_change(self, _=None, update_exe=True):
             app = self.v_app.get()
             if update_exe:
-                targets = {
-                    "Claude Code": (CLAUDE_CLI, "CLI"),
-                    "Codex": (CODEX_CLI, "CLI"),
-                    "Kimi CLI": (KIMI_CLI, "CLI"),
-                    "Hermes Agent": (HERMES_CLI, "CLI"),
-                    "Antigravity": (AG_IDE, "IDE"),
-                    "OpenCode": (OPENCODE_CLI, "TUI"),
-                    "FORGE": (FORGE_EXE, "Desktop"),
-                    "RENZ App": ("", "Built-in"),
-                }
-                exe, target = targets.get(app, ("", "CLI"))
-                self.v_exe.set(exe)
+                target = self.APP_DEFAULT_TARGET.get(app, "CLI")
                 self.v_target.set(target)
+                self._on_target_change(target)
 
             models_map = {
                 "Claude Code": CLAUDE_MODELS,
@@ -2167,12 +2270,26 @@ def gui_mode():
                 "Antigravity": AG_MODELS,
                 "OpenCode": OPENCODE_MODELS,
                 "FORGE": FORGE_MODELS,
-                "RENZ App": OLLAMA_MODELS,  # RENZ uses any Ollama model directly
+                "RENZ App": OLLAMA_MODELS,
             }
             vals = models_map.get(app, OLLAMA_MODELS)
             self.cb_model.configure(values=vals)
             if self.v_model.get() not in vals:
                 self.v_model.set(vals[0])
+
+        def _poll_proxy_status(self):
+            """Periodically check if WORM proxy is running and update header indicator."""
+            try:
+                running = worm_proxy_running()
+                if running:
+                    self.proxy_dot.configure(text_color=SUCCESS)
+                    self.proxy_lbl.configure(text="Proxy ON", text_color=SUCCESS)
+                else:
+                    self.proxy_dot.configure(text_color=TEXT_MUTED)
+                    self.proxy_lbl.configure(text="Proxy OFF", text_color=TEXT_MUTED)
+            except:
+                pass
+            self.after(3000, self._poll_proxy_status)
 
         def _save_profile(self):
             dialog = ctk.CTkInputDialog(text="Profile name:", title="Save Profile",

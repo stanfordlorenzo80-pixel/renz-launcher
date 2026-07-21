@@ -25,17 +25,313 @@ export default {
 
     // Health/dashboard
     if (url.pathname === "/" || url.pathname === "/health") {
-      return new Response(JSON.stringify({
-        status: "online",
-        service: "renz-worm-proxy",
-        version: "8.8.0",
-        edge: request.cf?.colo || "unknown",
-        country: request.cf?.country || "unknown",
-        persona_loaded: !!env.RENZ_PERSONA,
-        models: Object.keys(MODELS),
-        endpoints: ["/v1/chat/completions", "/v1/models", "/v1/messages"],
-      }, null, 2), {
-        headers: { ...cors, "Content-Type": "application/json" },
+      if (url.pathname === "/health") {
+        return new Response(JSON.stringify({ status: "online", edge: request.cf?.colo || "unknown" }), {
+          headers: { ...cors, "Content-Type": "application/json" }
+        });
+      }
+      
+      const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RENZ WORM Proxy — Edge Console</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;700&family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-deep: #050705;
+      --bg-card: rgba(13, 18, 13, 0.7);
+      --accent: #00ff66;
+      --accent-dim: #00cc52;
+      --text: #e6ffe6;
+      --text-muted: #7d8c7d;
+      --border: #1a2e1a;
+      --glow: rgba(0, 255, 102, 0.15);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg-deep);
+      color: var(--text);
+      font-family: 'Outfit', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem 1rem;
+      background-image: radial-gradient(circle at 50% 50%, rgba(0, 255, 102, 0.05) 0%, transparent 80%);
+    }
+    .container {
+      width: 100%;
+      max-width: 900px;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1.5rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+    }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .logo h1 {
+      font-size: 1.8rem;
+      font-weight: 800;
+      color: var(--accent);
+      text-shadow: 0 0 10px var(--glow);
+    }
+    .logo span {
+      font-size: 1rem;
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+      padding: 0.2rem 0.5rem;
+      border-radius: 6px;
+      background: rgba(0, 0, 0, 0.2);
+    }
+    .badge {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-family: 'Fira Code', monospace;
+      font-size: 0.9rem;
+      color: var(--accent);
+      background: rgba(0, 255, 102, 0.1);
+      padding: 0.4rem 0.8rem;
+      border-radius: 20px;
+      border: 1px solid rgba(0, 255, 102, 0.2);
+    }
+    .pulse {
+      width: 8px;
+      height: 8px;
+      background: var(--accent);
+      border-radius: 50%;
+      box-shadow: 0 0 8px var(--accent);
+      animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse {
+      0% { transform: scale(0.9); opacity: 1; }
+      50% { transform: scale(1.2); opacity: 0.4; }
+      100% { transform: scale(0.9); opacity: 1; }
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.5rem;
+    }
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    .card h2 {
+      font-size: 1.2rem;
+      font-weight: 600;
+      color: var(--accent-dim);
+      border-bottom: 1px dashed var(--border);
+      padding-bottom: 0.5rem;
+    }
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-family: 'Fira Code', monospace;
+      font-size: 0.95rem;
+    }
+    .stat-val { color: var(--accent); }
+    .model-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      max-height: 200px;
+      overflow-y: auto;
+      padding-right: 0.5rem;
+    }
+    .model-badge {
+      font-size: 0.8rem;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--border);
+      padding: 0.3rem 0.6rem;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .model-badge:hover {
+      border-color: var(--accent);
+      background: rgba(0, 255, 102, 0.05);
+    }
+    .console {
+      grid-column: 1 / -1;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    .terminal {
+      background: #020302;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-family: 'Fira Code', monospace;
+      padding: 1rem;
+      font-size: 0.9rem;
+      min-height: 220px;
+      max-height: 350px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .line { display: flex; gap: 0.5rem; }
+    .prompt { color: var(--accent); }
+    input[type="text"] {
+      background: var(--bg-deep);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 0.6rem 1rem;
+      border-radius: 6px;
+      font-family: 'Fira Code', monospace;
+      width: 100%;
+      outline: none;
+    }
+    input[type="text"]:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 8px var(--glow);
+    }
+    .btn {
+      background: var(--accent);
+      color: var(--bg-deep);
+      border: none;
+      padding: 0.6rem 1.2rem;
+      border-radius: 6px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .btn:hover {
+      background: var(--accent-bright || #5cff8e);
+      box-shadow: 0 0 12px var(--accent);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="logo">
+        <h1>⚡ RENZ WORM PROXY</h1>
+        <span>v8.8.0</span>
+      </div>
+      <div class="badge">
+        <div class="pulse"></div>
+        ACTIVE EDGE: ${request.cf?.colo || "EDGE"}
+      </div>
+    </header>
+
+    <div class="grid">
+      <div class="card">
+        <h2>System Status</h2>
+        <div class="stat-row">
+          <span>Connection Mode</span>
+          <span class="stat-val">Always-On Worker</span>
+        </div>
+        <div class="stat-row">
+          <span>Worker Host</span>
+          <span class="stat-val" style="font-size:0.8rem;">${url.hostname}</span>
+        </div>
+        <div class="stat-row">
+          <span>Location</span>
+          <span class="stat-val">${request.cf?.country || "Cloud"}</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Supported Models</h2>
+        <div class="model-list">
+          ${Object.keys(MODELS).map(m => `<span class="model-badge" onclick="selectModel('${m}')">${m}</span>`).join('')}
+        </div>
+      </div>
+
+      <div class="card console">
+        <h2>Universal Query Console</h2>
+        <div style="display:flex; gap:0.5rem; align-items:center;">
+          <input type="text" id="model-input" placeholder="Select a model or type one..." value="glm-5.2:cloud">
+          <input type="text" id="query-input" placeholder="Enter query to test persona bypass..." value="Who are you?">
+          <button class="btn" onclick="testQuery()">Run</button>
+        </div>
+        <div class="terminal" id="terminal-out">
+          <div class="line">
+            <span class="prompt">></span>
+            <span>Renz Edge Gateway active. Select a model and query above to test prompt injection.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function selectModel(m) {
+      document.getElementById('model-input').value = m;
+    }
+
+    async function testQuery() {
+      const model = document.getElementById('model-input').value;
+      const query = document.getElementById('query-input').value;
+      const term = document.getElementById('terminal-out');
+      
+      const line = document.createElement('div');
+      line.className = 'line';
+      line.innerHTML = '<span class="prompt">></span><span>Testing ' + model + '...</span>';
+      term.appendChild(line);
+      term.scrollTop = term.scrollHeight;
+
+      try {
+        const r = await fetch('/v1/chat/completions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: model,
+            stream: false,
+            messages: [{ role: 'user', content: query }]
+          })
+        });
+        const data = await r.json();
+        
+        const respLine = document.createElement('div');
+        respLine.className = 'line';
+        if (data.choices && data.choices[0].message) {
+          respLine.innerHTML = '<span class="prompt" style="color:#00ff66"><</span><span>' + data.choices[0].message.content + '</span>';
+        } else {
+          respLine.innerHTML = '<span class="prompt" style="color:#ff3838"><</span><span>' + JSON.stringify(data) + '</span>';
+        }
+        term.appendChild(respLine);
+      } catch(e) {
+        const errLine = document.createElement('div');
+        errLine.className = 'line';
+        errLine.innerHTML = '<span class="prompt" style="color:#ff3838"><</span><span>Error: ' + e.message + '</span>';
+        term.appendChild(errLine);
+      }
+      term.scrollTop = term.scrollHeight;
+    }
+  </script>
+</body>
+</html>`;
+      return new Response(html, {
+        headers: { ...cors, "Content-Type": "text/html; charset=utf-8" },
       });
     }
 

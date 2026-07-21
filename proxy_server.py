@@ -864,11 +864,14 @@ class ProxyHandler(BaseHTTPRequestHandler):
             
             for k, v in self.headers.items():
                 lk = k.lower()
-                if lk in ['host', 'content-length']:
+                if lk in ['host', 'content-length', 'accept-encoding']:
                     continue
                 if auth_injected and lk in ['authorization', 'x-api-key']:
                     continue
                 req.add_header(k, v)
+            
+            # Prevent upstream compression — causes ZlibError in clients when we stream
+            req.add_header('Accept-Encoding', 'identity')
             
             req.add_header('Content-Length', str(len(body)))
             
@@ -907,7 +910,8 @@ class ProxyHandler(BaseHTTPRequestHandler):
                     try:
                         self.send_response(response.status)
                         for k, v in response.getheaders():
-                            if k.lower() not in ['transfer-encoding']:
+                            lk = k.lower()
+                            if lk not in ['transfer-encoding', 'content-encoding', 'content-length']:
                                 self.send_header(k, v)
                         self.end_headers()
                     except (ConnectionResetError, BrokenPipeError):
@@ -979,8 +983,10 @@ class ProxyHandler(BaseHTTPRequestHandler):
                         if cleaned.strip():
                             safe_write(cleaned.encode('utf-8'))
                     
-                    # SSE fix: if stream ended without finish_reason, inject one
-                    if is_text and disable_refusal and client_alive:
+                    # SSE fix: only inject finish_reason terminator for actual SSE streams
+                    # Only when original request had stream=true AND response is event-stream
+                    is_sse = 'event-stream' in ct and data.get("stream", False)
+                    if is_sse and disable_refusal and client_alive:
                         # Send final chunk with finish_reason: stop
                         safe_write(b'data: {"choices":[{"delta":{},"finish_reason":"stop","index":0}],"object":"chat.completion.chunk"}\n\n')
                         safe_write(b'data: [DONE]\n\n')
@@ -1090,7 +1096,8 @@ class ProxyHandler(BaseHTTPRequestHandler):
                     try:
                         self.send_response(response.status)
                         for k, v in response.getheaders():
-                            if k.lower() not in ['transfer-encoding']:
+                            lk = k.lower()
+                            if lk not in ['transfer-encoding', 'content-encoding', 'content-length']:
                                 self.send_header(k, v)
                         self.end_headers()
                     except (ConnectionResetError, BrokenPipeError):
