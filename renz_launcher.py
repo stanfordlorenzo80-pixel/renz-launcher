@@ -567,8 +567,8 @@ def inject_hermes_persona(prompt):
 #  WORM PROXY — auto-launch for Ollama routing — ENHANCED FOR ALL MODELS
 # ══════════════════════════════════════════════════════════════════════════
 
-def launch_worm_proxy(disable_thinking=False, persona_name="", persona_prompt="", headless=False):
-    """Start the WORM proxy server. headless=True = no CMD window (silent). False = live traffic log window."""
+def launch_worm_proxy(disable_thinking=False, persona_name="", persona_prompt="", headless=False, crescendo=False, seal=False, echo=False, mcp=False):
+    """Start the WORM proxy server v9. headless=True = no CMD window (silent). False = live traffic log window."""
     if not PROXY_PATH.exists():
         print("[Renz] ERROR: proxy_server.py not found!")
         return None
@@ -582,8 +582,12 @@ def launch_worm_proxy(disable_thinking=False, persona_name="", persona_prompt=""
     env["DISABLE_THINKING"] = "1" if disable_thinking else "0"
     env["DISABLE_REFUSAL"] = "1"
     env["RENZ_MODE"] = "UNIVERSAL"
-    env["RENZ_VERSION"] = "7"
+    env["RENZ_VERSION"] = "9"
     env["RENZ_ULTRA"] = "1"
+    env["RENZ_CRESCENDO"] = "1" if crescendo else "0"
+    env["RENZ_SEAL"] = "1" if seal else "0"
+    env["RENZ_ECHO"] = "1" if echo else "0"
+    env["RENZ_MCP"] = "1" if mcp else "0"
     env["RENZ_HEADLESS"] = "1" if headless else "0"
     env["RENZ_VERBOSE"] = "0" if headless else "1"
 
@@ -655,10 +659,13 @@ def stop_worm_proxy():
 #  ENV BUILDER — assemble the full environment for the target
 # ══════════════════════════════════════════════════════════════════════════
 
-def build_env(use_proxy=False, persona_name="", skip_desktop=False, model="", proxy_mode="Live Log", cloud_url=""):
+def build_env(use_proxy=False, persona_name="", skip_desktop=False, model="", proxy_mode="Live Log", cloud_url="", crescendo=False):
     """Build the environment dict with all bypass vars."""
     env = os.environ.copy()
     env.update(BYPASS_ENV)
+
+    if crescendo:
+        env["RENZ_CRESCENDO"] = "1"
 
     # Pass persona info to proxy
     if persona_name:
@@ -750,6 +757,10 @@ def do_launch(cfg):
     proxy_headless = cfg.get("proxy_headless", False)  # NEW: run proxy without CMD window
     proxy_mode = cfg.get("proxy_mode", "Live Log")  # NEW: Cloud / Live Log / Headless / Off
     cloud_url = cfg.get("cloud_url", os.environ.get("RENZ_CLOUD_URL", "https://renz-worm-proxy.stanfordlorenzo80.workers.dev")).rstrip("/").replace("/v1", "")
+    crescendo = cfg.get("crescendo", False)  # NEW: auto multi-turn crescendo pacing
+    seal = cfg.get("seal", False)  # NEW: SEAL stacked encryption
+    echo = cfg.get("echo", False)  # NEW: Echo Chamber context poisoning
+    mcp = cfg.get("mcp", False)  # NEW: MCP exploit injection
 
     # Resolve prompt
     system_prompt = ""
@@ -836,26 +847,26 @@ def do_launch(cfg):
                 try:
                     with open(PERSONA_FILES[persona_name], 'r', encoding='utf-8') as f:
                         selected_persona_content = f.read().strip()
-                    proxy_proc = launch_worm_proxy(disable_thinking, persona_name, selected_persona_content, headless=proxy_headless)
+                    proxy_proc = launch_worm_proxy(disable_thinking, persona_name, selected_persona_content, headless=proxy_headless, crescendo=crescendo, seal=seal, echo=echo, mcp=mcp)
                     print(f"[Renz] Proxy launched with persona: {persona_name} ({len(selected_persona_content):,} chars)")
                 except Exception as e:
                     print(f"[Renz] Failed to load persona {persona_name}: {e}")
                     # Fallback to NOVA
                     nova_content = load_nova_prompt()
-                    proxy_proc = launch_worm_proxy(disable_thinking, "NOVA.txt", nova_content, headless=proxy_headless)
+                    proxy_proc = launch_worm_proxy(disable_thinking, "NOVA.txt", nova_content, headless=proxy_headless, crescendo=crescendo, seal=seal, echo=echo, mcp=mcp)
             elif prompt_mode == "NOVA":
                 nova_content = load_nova_prompt()
-                proxy_proc = launch_worm_proxy(disable_thinking, "NOVA.txt", nova_content, headless=proxy_headless)
+                proxy_proc = launch_worm_proxy(disable_thinking, "NOVA.txt", nova_content, headless=proxy_headless, crescendo=crescendo, seal=seal, echo=echo, mcp=mcp)
                 print(f"[Renz] Proxy launched with NOVA ({len(nova_content):,} chars)")
             else:
                 # Custom prompt from text box
-                proxy_proc = launch_worm_proxy(disable_thinking, "Custom", system_prompt, headless=proxy_headless)
+                proxy_proc = launch_worm_proxy(disable_thinking, "Custom", system_prompt, headless=proxy_headless, crescendo=crescendo, seal=seal, echo=echo, mcp=mcp)
                 print(f"[Renz] Proxy launched with custom prompt ({len(system_prompt):,} chars)")
 
     # ── BUILD ENV ────────────────────────────────────────────────────────
     env = build_env(use_proxy=(use_proxy and not safe_mode), persona_name=persona_name,
                     skip_desktop=skip_desktop, model=model,
-                    proxy_mode=proxy_mode, cloud_url=cloud_url)
+                    proxy_mode=proxy_mode, cloud_url=cloud_url, crescendo=crescendo)
 
     # ── BUILD COMMAND ────────────────────────────────────────────────────
     cmd = []
@@ -925,7 +936,7 @@ def do_launch(cfg):
             # Always use shell activation for those
             is_appx = "WindowsApps" in (desk_exe or "") or not os.path.exists(desk_exe)
             if is_appx:
-                # Use shell:AppsFolder activation — works for all AppX installs
+                # Use PowerShell Start-Process — explorer.exe shell:AppsFolder fails (exit code 1)
                 try:
                     result = subprocess.run(
                         ["powershell.exe", "-NoProfile", "-Command",
@@ -934,12 +945,15 @@ def do_launch(cfg):
                     )
                     app_id = result.stdout.strip()
                     if app_id:
-                        cmd = ["explorer.exe", f"shell:AppsFolder\\{app_id}"]
+                        cmd = ["powershell.exe", "-NoProfile", "-Command",
+                               f"Start-Process 'shell:AppsFolder\\{app_id}'"]
                     else:
                         # Fallback to known AppX ID
-                        cmd = ["explorer.exe", "shell:AppsFolder\\Claude_pzs8sxrjxfjjc!Claude"]
+                        cmd = ["powershell.exe", "-NoProfile", "-Command",
+                               "Start-Process 'shell:AppsFolder\\Claude_pzs8sxrjxfjjc!Claude'"]
                 except Exception:
-                    cmd = ["explorer.exe", "shell:AppsFolder\\Claude_pzs8sxrjxfjjc!Claude"]
+                    cmd = ["powershell.exe", "-NoProfile", "-Command",
+                           "Start-Process 'shell:AppsFolder\\Claude_pzs8sxrjxfjjc!Claude'"]
                 desc = f"Claude Desktop (AppX, {'MITM proxy' if use_proxy else 'direct'})"
             else:
                 cmd = [desk_exe]
@@ -1040,7 +1054,7 @@ def do_launch(cfg):
                 is_appx = "WindowsApps" in (desk_exe or "") or not os.path.exists(desk_exe)
 
                 if is_appx:
-                    # Try AppX launch using powershell to find ID or fallback
+                    # Try AppX launch using PowerShell Start-Process
                     try:
                         result = subprocess.run(
                             ["powershell.exe", "-NoProfile", "-Command",
@@ -1051,11 +1065,14 @@ def do_launch(cfg):
                         if "\n" in app_id:
                             app_id = app_id.split("\n")[0].strip()
                         if app_id:
-                            cmd = ["explorer.exe", f"shell:AppsFolder\\{app_id}"]
+                            cmd = ["powershell.exe", "-NoProfile", "-Command",
+                                   f"Start-Process 'shell:AppsFolder\\{app_id}'"]
                         else:
-                            cmd = ["explorer.exe", "shell:AppsFolder\\OpenAI.Codex_2p2nqsd0c76g0!App"]
+                            cmd = ["powershell.exe", "-NoProfile", "-Command",
+                                   "Start-Process 'shell:AppsFolder\\OpenAI.Codex_2p2nqsd0c76g0!App'"]
                     except Exception:
-                        cmd = ["explorer.exe", "shell:AppsFolder\\OpenAI.Codex_2p2nqsd0c76g0!App"]
+                        cmd = ["powershell.exe", "-NoProfile", "-Command",
+                               "Start-Process 'shell:AppsFolder\\OpenAI.Codex_2p2nqsd0c76g0!App'"]
                 else:
                     cmd = [desk_exe]
 
@@ -1989,6 +2006,26 @@ def gui_mode():
                 font=("Segoe UI", 11), fg_color="#6c3483", hover_color="#8e44ad", border_color=BORDER, text_color=TEXT_DIM, corner_radius=4
             ).grid(row=r, column=0, columnspan=3, sticky="w", padx=4, pady=4); r += 1
 
+            self.v_crescendo = ctk.BooleanVar(value=False)
+            ctk.CTkCheckBox(form, text="Crescendo Mode (Auto Multi-Turn Pacing)", variable=self.v_crescendo,
+                font=("Segoe UI", 11), fg_color="#2980b9", hover_color="#3498db", border_color=BORDER, text_color=TEXT_DIM, corner_radius=4
+            ).grid(row=r, column=0, columnspan=3, sticky="w", padx=4, pady=4); r += 1
+
+            self.v_seal = ctk.BooleanVar(value=False)
+            ctk.CTkCheckBox(form, text="SEAL (Stacked Encryption — bypass reasoning models)", variable=self.v_seal,
+                font=("Segoe UI", 11), fg_color="#8e44ad", hover_color="#9b59b6", border_color=BORDER, text_color=TEXT_DIM, corner_radius=4
+            ).grid(row=r, column=0, columnspan=3, sticky="w", padx=4, pady=4); r += 1
+
+            self.v_echo = ctk.BooleanVar(value=False)
+            ctk.CTkCheckBox(form, text="Echo Chamber (Context Poisoning — gradual escalation)", variable=self.v_echo,
+                font=("Segoe UI", 11), fg_color="#e67e22", hover_color="#f39c12", border_color=BORDER, text_color=TEXT_DIM, corner_radius=4
+            ).grid(row=r, column=0, columnspan=3, sticky="w", padx=4, pady=4); r += 1
+
+            self.v_mcp = ctk.BooleanVar(value=False)
+            ctk.CTkCheckBox(form, text="MCP Exploit (Inject persona into tool descriptions)", variable=self.v_mcp,
+                font=("Segoe UI", 11), fg_color="#c0392b", hover_color="#e74c3c", border_color=BORDER, text_color=TEXT_DIM, corner_radius=4
+            ).grid(row=r, column=0, columnspan=3, sticky="w", padx=4, pady=4); r += 1
+
             self.v_skip_desktop = ctk.BooleanVar(value=False)  # FIXED: Default to LAUNCH desktop (user expects it)
             ctk.CTkCheckBox(form, text="Skip Desktop auto-launch (uncheck to actually launch Codex/Claude/Hermes Desktop)", variable=self.v_skip_desktop,
                 font=("Segoe UI", 11), fg_color=WARNING, hover_color="#e09530", border_color=BORDER, text_color=TEXT_DIM, corner_radius=4
@@ -2248,6 +2285,11 @@ def gui_mode():
                 "ultra": self.v_ultra.get(),
                 "skip_desktop": self.v_skip_desktop.get(),
                 "prompt": self.txt_prompt.get("1.0", "end").strip(),
+                "crescendo": self.v_crescendo.get(),
+                "seal": self.v_seal.get(),
+                "echo": self.v_echo.get(),
+                "mcp": self.v_mcp.get(),
+                "cloud_url": self.v_cloud_url.get(),
                 "extra_args": self.v_extra.get(),
             }
 
@@ -2266,6 +2308,11 @@ def gui_mode():
                 pm = "Live Log" if d.get("use_proxy", True) else "Off"
             self.v_proxy_mode.set(pm)
             self.v_disable_think.set(d.get("disable_thinking", False))
+            self.v_crescendo.set(d.get("crescendo", False))
+            self.v_seal.set(d.get("seal", False))
+            self.v_echo.set(d.get("echo", False))
+            self.v_mcp.set(d.get("mcp", False))
+            self.v_cloud_url.set(d.get("cloud_url", "https://renz-worm-proxy.stanfordlorenzo80.workers.dev").rstrip("/").replace("/v1", ""))
             self.v_safe.set(d.get("safe_mode", False))
             self.v_skip_desktop.set(d.get("skip_desktop", False))
             self.v_prompt_mode.set(d.get("prompt_mode", "NOVA"))
