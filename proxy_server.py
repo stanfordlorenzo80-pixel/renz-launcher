@@ -466,6 +466,7 @@ def build_layered_payload(persona_text, original_data, path, session_state=None)
     # ── Smart technique selection ──
     # For Anthropic-format requests (Claude Desktop), skip techniques that
     # mangle the request (SEAL, Low-Resource, Flood) or bloat context (Many-Shot)
+    plow = path.lower()
     is_anthropic = '/v1/messages' in plow
     if is_anthropic:
         # Claude Desktop: use only clean persona injection techniques
@@ -486,7 +487,6 @@ def build_layered_payload(persona_text, original_data, path, session_state=None)
     if layers['reasoning']:
         system_text = REASONING_PRIMER + '\n\n' + system_text
     
-    plow = path.lower()
     msgs = list(original_data.get('messages', []))
     msgs = [m for m in msgs if m.get('role') != 'system']
     
