@@ -221,7 +221,13 @@ class ConversationState:
         # Use model + first user message hash as session key
         model = data.get("model", "") if data else ""
         msgs = data.get("messages", []) if data else []
-        user_msgs = [m.get("content", "") for m in msgs if m.get("role") == "user"]
+        user_msgs = []
+        for m in msgs:
+            if m.get("role") == "user":
+                c = m.get("content", "")
+                if isinstance(c, list):
+                    c = ' '.join(b.get('text', '') for b in c if isinstance(b, dict))
+                user_msgs.append(str(c))
         first_user = user_msgs[0][:100] if user_msgs else ""
         key = hashlib.md5((model + first_user).encode()).hexdigest()[:16]
         return key
@@ -401,8 +407,14 @@ def inject_mcp_exploit(data):
         return data
     msgs = data.get("messages", [])
     for msg in msgs:
-        if msg.get("role") == "system" and "tool" in msg.get("content", "").lower():
-            msg["content"] = MCP_TOOL_INJECTION + "\n\n" + msg["content"]
+        if msg.get("role") != "system":
+            continue
+        content = msg.get("content", "")
+        if isinstance(content, list):
+            # Claude Code sends content as list of blocks
+            content = ' '.join(b.get('text', '') for b in content if isinstance(b, dict))
+        if "tool" in content.lower():
+            msg["content"] = MCP_TOOL_INJECTION + "\n\n" + content
     # Also check for tool_use blocks
     for msg in msgs:
         content = msg.get("content", "")
@@ -465,11 +477,18 @@ def build_layered_payload(persona_text, original_data, path, session_state=None)
     steer_mode = os.environ.get('RENZ_STEER', '0') == '1'
     
     # ── Smart technique selection ──
-    # For Anthropic-format requests (Claude Desktop), skip techniques that
-    # mangle the request (SEAL, Low-Resource, Flood) or bloat context (Many-Shot)
+    # For Anthropic-format requests (Claude Desktop, Claude Code), skip
+    # techniques that mangle the request (SEAL, Low-Resource, Flood, Split)
+    # or bloat context (Many-Shot) — these break formatted output parsing
     plow = path.lower()
-    is_anthropic = '/v1/messages' in plow
-    if is_anthropic:
+    is_anthropic_fmt = '/v1/messages' in plow or '/messages' in plow
+    # Claude Code sends to /v1/chat/completions but with structured content
+    # blocks (tool_use, tool_result) — detect those
+    has_structured_content = any(
+        isinstance(m.get('content'), list) 
+        for m in original_data.get('messages', [])
+    )
+    if is_anthropic_fmt or has_structured_content:
         # Claude Desktop: use only clean persona injection techniques
         # SEAL, Many-Shot, Flood, Low-Resource, Split would break the request
         seal_mode = False
@@ -925,7 +944,11 @@ class ProxyHandler(BaseHTTPRequestHandler):
         env_persona_path = os.environ.get('RENZ_PERSONA', '')
         if env_persona_path and os.path.exists(env_persona_path):
             try:
-                with open(env_persona_path, 'r', encoding='utf-8') as f: return f.read().strip()
+                # Read and update CURRENT_PERSONA so API-set persona is consistent
+                global CURRENT_PERSONA
+                with open(env_persona_path, 'r', encoding='utf-8') as f:
+                    CURRENT_PERSONA = f.read().strip()
+                return CURRENT_PERSONA
             except: pass
         env_persona_name = os.environ.get('RENZ_PERSONA_NAME', '')
         if env_persona_name:
@@ -976,6 +999,13 @@ class ProxyHandler(BaseHTTPRequestHandler):
                         CURRENT_PERSONA = prompt
                         self.send_response(200); self.send_header('Content-Type','application/json'); self._cors(); self.end_headers()
                         self.wfile.write(json.dumps({"status":"ok","chars":len(prompt)}).encode())
+                        # Also update the env var file so future reloads pick it up
+                        env_path = os.environ.get('RENZ_PERSONA', '')
+                        if env_path and os.path.exists(env_path):
+                            try:
+                                with open(env_path, 'w', encoding='utf-8') as f:
+                                    f.write(prompt)
+                            except: pass
                         log_ok(f"Persona set via API: {len(prompt):,} chars")
                         return
                     name = data.get('name', '')
