@@ -62,11 +62,11 @@ def main():
     # Build each
     builds = [
         # (name, script, console, hidden_imports, add_data)
-        ("renz_launcher", "renz_launcher.py", True,  # console=True so proxy log shows
-         ["customtkinter", "rich", "rich.console", "rich.panel", "rich.table", "rich.box", "rich.prompt"],
+        ("renz_launcher", "renz_launcher.py", True,
+         ["rich", "rich.console", "rich.panel", "rich.table", "rich.box", "rich.prompt"],
          [("personas", "personas"), ("proxy_server.py", "."), ("renz_app", "renz_app")]),
         ("renz_app_desktop", "renz_app/desktop.py", False,
-         ["customtkinter", "darkdetect", "PIL", "_tkinter"],
+         ["PIL", "_tkinter"],
          [("personas", "personas"), ("renz_app", "renz_app")]),
         ("renz_app_cli", "renz_app/__main__.py", True, [], [("personas", "personas")]),
         ("renz_proxy", "proxy_server.py", True, [], []),
