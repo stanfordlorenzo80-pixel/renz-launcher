@@ -2829,6 +2829,8 @@ if __name__ == "__main__":
         sys.exit(0)
     if "--cli" in sys.argv:
         cli_mode()
+    elif "--gui" in sys.argv:
+        gui_mode()
     elif len(sys.argv) > 1:
         _basic_cli()
     else:
