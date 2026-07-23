@@ -23,7 +23,8 @@ def resolve_appx_exe(package_pattern, exe_candidates, default_fallback):
         result = subprocess.run(
             ["powershell.exe", "-NoProfile", "-Command",
              f"(Get-AppxPackage -Name *{package_pattern}*).InstallLocation"],
-            capture_output=True, text=True, timeout=5
+            capture_output=True, text=True, timeout=5,
+            creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0,
         )
         loc = result.stdout.strip()
         if loc and os.path.exists(loc):
