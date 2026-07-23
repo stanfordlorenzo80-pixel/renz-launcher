@@ -19,7 +19,8 @@ launcher_path = os.path.join(base, "renz_launcher.py")
 if os.path.exists(launcher_path):
     with open(launcher_path, "r", encoding="utf-8") as f:
         code = f.read()
-    exec(code)
+    # Set __name__ so the if __name__ == '__main__' block runs
+    exec(code, {"__name__": "__main__", "__file__": launcher_path})
 else:
     print(f"ERROR: renz_launcher.py not found at {launcher_path}")
     sys.exit(1)
