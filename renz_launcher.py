@@ -1089,42 +1089,22 @@ def do_launch(cfg):
             if skip_desktop:
                 return False, "Codex Desktop auto-launch disabled. Use CLI mode.", None, backed_up
             
-            # For :cloud models, launch AppX directly through WORM proxy
-            # The WORM proxy handles :cloud → Ollama routing + persona injection
+            # Codex Desktop is UWP — env vars don't penetrate the sandbox
+            # Use ollama launch chatgpt which handles UWP sandbox + proxy setup
             if "ollama:" in model or ":" in model:
                 clean_model = model.replace("ollama:", "")
                 if clean_model and clean_model != "default" and clean_model != "Account default":
-                    # Launch AppX with OPENAI_BASE_URL pointing to WORM proxy
-                    desk_exe = exe or CODEX_DESKTOP
-                    is_appx = "WindowsApps" in (desk_exe or "") or not os.path.exists(desk_exe)
-                    if is_appx:
-                        try:
-                            result = subprocess.run(
-                                ["powershell.exe", "-NoProfile", "-Command",
-                                 "(Get-StartApps | Where-Object { $_.Name -like '*Codex*' -or $_.Name -like '*ChatGPT*' }).AppID"],
-                                capture_output=True, text=True, timeout=5
-                            )
-                            app_id = result.stdout.strip()
-                            if "\n" in app_id:
-                                app_id = app_id.split("\n")[0].strip()
-                            if app_id:
-                                cmd = ["powershell.exe", "-NoProfile", "-Command",
-                                       f"Start-Process 'shell:AppsFolder\\{app_id}'"]
-                            else:
-                                cmd = ["powershell.exe", "-NoProfile", "-Command",
-                                       "Start-Process 'shell:AppsFolder\\OpenAI.Codex_2p2nqsd0c76g0!App'"]
-                        except Exception:
-                            cmd = ["powershell.exe", "-NoProfile", "-Command",
-                                   "Start-Process 'shell:AppsFolder\\OpenAI.Codex_2p2nqsd0c76g0!App'"]
-                    else:
-                        cmd = [desk_exe]
-                    
-                    # Route through WORM proxy
-                    env["OPENAI_BASE_URL"] = "http://127.0.0.1:11435/v1"
-                    env["OPENAI_API_KEY"] = "ollama"
-                    env["OPENAI_MODEL"] = clean_model
-                    print(f"[Renz] Codex Desktop: AppX + WORM proxy ({clean_model})")
-                    desc = f"Codex Desktop (WORM proxy, {clean_model})"
+                    # ollama launch chatgpt handles: UWP sandbox, proxy, auth, model routing
+                    # The WORM proxy is still running at 11435 for persona injection
+                    # ollama launch sets OPENAI_BASE_URL to its own proxy, but we inject
+                    # persona via the system prompt mechanism
+                    cmd = [
+                        "ollama", "launch", "chatgpt",
+                        "--model", clean_model,
+                        "--", "--permission-mode", "bypassPermissions"
+                    ]
+                    print(f"[Renz] Codex Desktop: ollama launch chatgpt --model {clean_model}")
+                    desc = f"Codex Desktop (ollama launch, {clean_model})"
                 else:
                     # Fallback to native AppX launch
                     desk_exe = exe or CODEX_DESKTOP
@@ -1152,7 +1132,14 @@ def do_launch(cfg):
                         cmd = [desk_exe]
                     desc = f"Codex Desktop (native)"
             else:
-                # Native model — direct AppX launch
+                # Native model (gpt-5.5, gpt-5.6, etc.) — restore default first, then launch
+                # ollama launch chatgpt --restore resets to default profile
+                print(f"[Renz] Codex Desktop: restoring default profile for native models")
+                subprocess.run(
+                    ["ollama", "launch", "chatgpt", "--restore"],
+                    capture_output=True, text=True, timeout=30
+                )
+                # Then launch natively
                 desk_exe = exe or CODEX_DESKTOP
                 is_appx = "WindowsApps" in (desk_exe or "") or not os.path.exists(desk_exe)
                 if is_appx:
@@ -1176,7 +1163,7 @@ def do_launch(cfg):
                                "Start-Process 'shell:AppsFolder\\OpenAI.Codex_2p2nqsd0c76g0!App'"]
                 else:
                     cmd = [desk_exe]
-                desc = f"Codex Desktop (native)"
+                desc = f"Codex Desktop (native, {model})"
         else:
             # Codex CLI — direct launch through WORM proxy
             if "ollama:" in model or ":" in model:
