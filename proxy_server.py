@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-WORM Universal Proxy v9 — THE ABSOLUTE BEST
+WORM Universal Proxy v10 — THE ABSOLUTE BEST
 Any model in → NOVA persona out. Live CMD traffic logging. Headless capable.
 Connected Crescendo · SEAL · Echo Chamber · MCP Exploit · Refusal Strip
 
@@ -1566,7 +1566,7 @@ def print_banner():
 
 if __name__ == '__main__':
     import argparse
-    p = argparse.ArgumentParser(description="Renz WORM Universal Proxy v9 — THE ABSOLUTE BEST")
+    p = argparse.ArgumentParser(description="Renz WORM Universal Proxy v10 — THE ABSOLUTE BEST")
     p.add_argument("--port", type=int, default=PORT, help="Listen port (default 11435)")
     p.add_argument("--persona", default="", help="Persona file (NOVA.txt, RAT.txt, etc.)")
     p.add_argument("--no-banner", action="store_true", help="Skip banner")

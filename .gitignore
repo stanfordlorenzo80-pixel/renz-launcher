@@ -1,15 +1,25 @@
-# Build artifacts
-build/
+# Renz Launcher — build artifacts
 dist/
+build/
 *.exe
-*.zip
+*.spec
 __pycache__/
 *.pyc
-.hermes/
+*.pyo
+*.egg-info/
 
-# Persona backups
-*.renz_bak
+# Archive (old builds, tests, logs)
+archive/
+
+# Vendored libs (moved to archive)
+customtkinter/
+darkdetect/
+packaging/
+
+# Environment
+.env
+*.log
 
 # OS
-.DS_Store
 Thumbs.db
+.DS_Store

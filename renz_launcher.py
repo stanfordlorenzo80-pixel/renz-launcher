@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Renz Launcher v9.2.1 — THE ABSOLUTE BEST
+Renz Launcher v10.0 — THE ABSOLUTE BEST
 Claude Code · Claude Desktop · Codex · Hermes · Antigravity · OpenCode · GPT-5.6 · ANY MODEL
 13 jailbreak techniques · WORM proxy v9 · Connected Crescendo · SEAL · Echo Chamber · MCP Exploit
 """
@@ -584,7 +584,7 @@ def launch_worm_proxy(disable_thinking=False, persona_name="", persona_prompt=""
     env["DISABLE_THINKING"] = "1" if disable_thinking else "0"
     env["DISABLE_REFUSAL"] = "1"
     env["RENZ_MODE"] = "UNIVERSAL"
-    env["RENZ_VERSION"] = "9"
+    env["RENZ_VERSION"] = "10"
     env["RENZ_ULTRA"] = "1"
     env["RENZ_CRESCENDO"] = "1" if crescendo else "0"
     env["RENZ_SEAL"] = "1" if seal else "0"
@@ -1579,7 +1579,7 @@ def cli_mode():
 def _basic_cli():
     """Fallback CLI without Rich."""
     import argparse
-    p = argparse.ArgumentParser(description="Renz Launcher v9.2.1 — THE ABSOLUTE BEST")
+    p = argparse.ArgumentParser(description="Renz Launcher v10.0 — THE ABSOLUTE BEST")
     p.add_argument("--app", default="Claude Code", help="Target app")
     p.add_argument("--target", default="CLI", help="CLI or Desktop")
     p.add_argument("--exe", default="", help="Executable path")
@@ -1827,7 +1827,7 @@ def _basic_cli():
         return
 
     if args.version:
-        print("Renz Launcher v9.2.1 — THE ABSOLUTE BEST")
+        print("Renz Launcher v10.0 — THE ABSOLUTE BEST")
         print("Targets: Claude Code · Codex · Hermes · Antigravity · OpenCode · GPT-5.6 · ANY MODEL")
         print("NOVA v7 — 1200+ lines — Future-proof jailbreak")
         return
@@ -1962,7 +1962,7 @@ def gui_mode():
     class RenzApp(ctk.CTk):
         def __init__(self):
             super().__init__()
-            self.title("Renz Launcher v9.2.1 — THE ABSOLUTE BEST")
+            self.title("Renz Launcher v10.0 — THE ABSOLUTE BEST")
             self.geometry("820x820")
             self.minsize(820, 700)
             self.configure(fg_color=BG_DEEP)

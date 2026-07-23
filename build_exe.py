@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Build script for RENZ Launcher v8.7.0
+Build script for RENZ Launcher v10.0
 Builds standalone EXEs with PyInstaller:
   - dist/renz_launcher.exe     (GUI)
   - dist/renz_app_desktop.exe  (RENZ App Desktop)
