@@ -1,4 +1,3 @@
 @echo off
 cd /d "%~dp0"
-dist\renz_launcher.exe --gui
-pause
+start "" dist\renz_gui.exe
